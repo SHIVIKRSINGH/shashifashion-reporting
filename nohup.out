@@ -1,0 +1,231 @@
+ * Serving Flask app 'sync_invoice'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [12/Jul/2025 16:35:13] "[31m[1mGET /sync_invoice HTTP/1.1[0m" 405 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 16:49:42] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 16:52:36] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 16:53:53] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:06:07] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:08:48] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:10:47] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:11:16] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:13:21] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
+Traceback (most recent call last):
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 354, in _open_connection
+    self._cmysql.connect(**cnx_kwargs)
+_mysql_connector.MySQLInterfaceError: Access denied for user 'shivendra'@'localhost' (using password: YES)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/www/shashifashion/sync_invoice.py", line 31, in sync_invoice
+    conn = get_conn()
+           ^^^^^^^^^^
+  File "/var/www/shashifashion/sync_invoice.py", line 8, in get_conn
+    return mysql.connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/pooling.py", line 322, in connect
+    return CMySQLConnection(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 142, in __init__
+    self.connect(**kwargs)
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/abstracts.py", line 1605, in connect
+    self._open_connection()
+  File "/var/www/shashifashion/venv/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 360, in _open_connection
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1045 (28000): Access denied for user 'shivendra'@'localhost' (using password: YES)
+127.0.0.1 - - [12/Jul/2025 17:16:29] "[35m[1mPOST /sync_invoice HTTP/1.1[0m" 500 -
