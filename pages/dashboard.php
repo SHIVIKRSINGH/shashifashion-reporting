@@ -15,9 +15,9 @@ $to = $_GET['to'] ?? $today;
 
 // Fetch sales data
 $sql_sales = "
-    SELECT invoice_dt AS date, SUM(net_amt_after_disc) AS total_sale
+    SELECT date(invoice_dt) AS date, SUM(net_amt_after_disc) AS total_sale
     FROM t_invoice_hdr
-    WHERE invoice_dt BETWEEN ? AND ?
+    WHERE date(invoice_dt) BETWEEN ? AND ?
     GROUP BY invoice_dt
 ";
 $stmt_sales = $con->prepare($sql_sales);
@@ -27,9 +27,9 @@ $res_sales = $stmt_sales->get_result();
 
 // Fetch return data
 $sql_returns = "
-    SELECT sr_dt AS date, SUM(net_amt) AS total_return
+    SELECT date(sr_dt) AS date, SUM(net_amt) AS total_return
     FROM t_sr_hdr
-    WHERE sr_dt BETWEEN ? AND ?
+    WHERE date(sr_dt) BETWEEN ? AND ?
     GROUP BY sr_dt
 ";
 $stmt_returns = $con->prepare($sql_returns);
@@ -65,6 +65,7 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Sales Dashboard</title>
@@ -75,6 +76,7 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
         canvas {
             max-height: 500px;
         }
+
         @media (max-width: 768px) {
             canvas {
                 max-height: 300px;
@@ -82,93 +84,102 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
         }
     </style>
 </head>
+
 <body class="bg-light">
 
-<div class="container py-4">
-    <h2 class="mb-3">Sales & Return Overview</h2>
+    <div class="container py-4">
+        <h2 class="mb-3">Sales & Return Overview</h2>
 
-    <!-- Date Filter -->
-    <form method="get" class="row g-3 mb-4">
-        <div class="col-sm-6 col-md-3">
-            <label>From</label>
-            <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control">
-        </div>
-        <div class="col-sm-6 col-md-3">
-            <label>To</label>
-            <input type="date" name="to" value="<?= htmlspecialchars($to) ?>" class="form-control">
-        </div>
-        <div class="col-md-3 align-self-end">
-            <button class="btn btn-primary w-100">Apply</button>
-        </div>
-    </form>
+        <!-- Date Filter -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-sm-6 col-md-3">
+                <label>From</label>
+                <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control">
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <label>To</label>
+                <input type="date" name="to" value="<?= htmlspecialchars($to) ?>" class="form-control">
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button class="btn btn-primary w-100">Apply</button>
+            </div>
+        </form>
 
-    <!-- Chart Container -->
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <canvas id="dualBarChart"></canvas>
+        <!-- Chart Container -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <canvas id="dualBarChart"></canvas>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const ctx = document.getElementById('dualBarChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: <?= json_encode($labels) ?>,
-            datasets: [
-                {
-                    label: 'Net Sales (₹)',
-                    data: <?= json_encode($salesData) ?>,
-                    backgroundColor: 'rgba(75, 192, 192, 0.8)',
-                    borderRadius: 5
-                },
-                {
-                    label: 'Sale Returns (₹)',
-                    data: <?= json_encode($returnsData) ?>,
-                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                    borderRadius: 5
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            interaction: {
-                mode: 'index',
-                intersect: false
+    <script>
+        const ctx = document.getElementById('dualBarChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($labels) ?>,
+                datasets: [{
+                        label: 'Net Sales (₹)',
+                        data: <?= json_encode($salesData) ?>,
+                        backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Sale Returns (₹)',
+                        data: <?= json_encode($returnsData) ?>,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderRadius: 5
+                    }
+                ]
             },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: ctx => '₹ ' + ctx.formattedValue
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => '₹ ' + ctx.formattedValue
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Sales vs Returns per Day',
+                        font: {
+                            size: 18
+                        }
                     }
                 },
-                title: {
-                    display: true,
-                    text: 'Sales vs Returns per Day',
-                    font: { size: 18 }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: false,
-                    ticks: { color: '#333', autoSkip: true, maxRotation: 45 },
-                    grid: { display: false }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: value => '₹ ' + value,
-                        color: '#333'
+                scales: {
+                    x: {
+                        stacked: false,
+                        ticks: {
+                            color: '#333',
+                            autoSkip: true,
+                            maxRotation: 45
+                        },
+                        grid: {
+                            display: false
+                        }
                     },
-                    grid: {
-                        color: '#eee'
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => '₹ ' + value,
+                            color: '#333'
+                        },
+                        grid: {
+                            color: '#eee'
+                        }
                     }
                 }
             }
-        }
-    });
-</script>
+        });
+    </script>
 
 </body>
+
 </html>
