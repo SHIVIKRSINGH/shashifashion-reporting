@@ -8,7 +8,7 @@ if (session_status() == PHP_SESSION_NONE) {
 $host = 'localhost';
 $user = 'shivendra';
 $password = '24199319@Shiv';
-$default_db = 'softgen_db_db';
+$default_db = 'softgen_db';
 
 // Use selected DB from session if available
 $dbname = isset($_SESSION['db_selected']) ? $_SESSION['db_selected'] : $default_db;
