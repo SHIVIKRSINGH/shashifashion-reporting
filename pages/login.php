@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="container">
         <div class="login-card">
             <div class="top-art"></div>
-            <h2>Welcome<br>Back</h2>
+            <h2>Welcome</h2>
 
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
