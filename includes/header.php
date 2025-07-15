@@ -95,7 +95,7 @@ foreach ($menus as $menu) {
 
 <body>
     <div class="sidebar">
-        <h4 class="text-center">🧵 ShashiFashion</h4>
+        <a class="navbar-brand" href="dashboard.php">Shashi Fashion</a>
         <?php foreach ($menu_tree as $menu): ?>
             <?php if (empty($menu['children'])): ?>
                 <a href="<?= $menu['url'] ?>"><i class="<?= $menu['icon'] ?>"></i> <?= $menu['name'] ?></a>
@@ -111,5 +111,5 @@ foreach ($menus as $menu) {
     <div class="content">
         <div class="topbar d-flex justify-content-between align-items-center">
             <h5>Welcome, <?= $_SESSION['name'] ?? 'User' ?></h5>
-            <a href="logout.php" class="btn btn-outline-danger btn-sm">Logout</a>
+            <a class="nav-link text-danger" href="logout.php">Logout</a>
         </div>
