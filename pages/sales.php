@@ -1,5 +1,6 @@
 <?php
 require_once "../includes/config.php"; // MySQLi config
+include "../includes/header.php";
 
 // Error reporting
 ini_set('display_errors', 1);
@@ -46,60 +47,61 @@ if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoic
 
 <body class="bg-light">
 
-<div class="container py-5">
-    <h2 class="mb-4">Invoice Report</h2>
+    <div class="container py-5">
+        <h2 class="mb-4">Invoice Report</h2>
 
-    <form method="get" class="row g-3 mb-4">
-        <div class="col-md-3">
-            <label class="form-label">From Date</label>
-            <input type="date" class="form-control" name="from" value="<?= htmlspecialchars($from) ?>">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">To Date</label>
-            <input type="date" class="form-control" name="to" value="<?= htmlspecialchars($to) ?>">
-        </div>
-        <div class="col-md-3 align-self-end">
-            <button type="submit" class="btn btn-primary">Search</button>
-        </div>
-    </form>
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label">From Date</label>
+                <input type="date" class="form-control" name="from" value="<?= htmlspecialchars($from) ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">To Date</label>
+                <input type="date" class="form-control" name="to" value="<?= htmlspecialchars($to) ?>">
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
 
-    <table id="invoiceTable" class="table table-striped table-bordered">
-        <thead>
-            <tr>
-                <th>Invoice No</th>
-                <th>Customer</th>
-                <th>Invoice Date</th>
-                <th>Invoice Time</th>
-                <th>Net Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($invoices as $row): ?>
+        <table id="invoiceTable" class="table table-striped table-bordered">
+            <thead>
                 <tr>
-                    <td><?= htmlspecialchars($row['invoice_no']) ?></td>
-                    <td><?= htmlspecialchars($row['cust_id'] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($row['invoice_dt']) ?></td>
-                    <td><?= htmlspecialchars($row['bill_time']) ?></td>
-                    <td><?= number_format($row['net_amt_after_disc'], 2) ?></td>
+                    <th>Invoice No</th>
+                    <th>Customer</th>
+                    <th>Invoice Date</th>
+                    <th>Invoice Time</th>
+                    <th>Net Amount</th>
                 </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                <?php foreach ($invoices as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($row['invoice_no']) ?></td>
+                        <td><?= htmlspecialchars($row['cust_id'] ?? '-') ?></td>
+                        <td><?= htmlspecialchars($row['invoice_dt']) ?></td>
+                        <td><?= htmlspecialchars($row['bill_time']) ?></td>
+                        <td><?= number_format($row['net_amt_after_disc'], 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
-    <div class="mt-3">
-        <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
+        <div class="mt-3">
+            <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
+        </div>
     </div>
-</div>
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-<script>
-    $(document).ready(function() {
-        $('#invoiceTable').DataTable();
-    });
-</script>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#invoiceTable').DataTable();
+        });
+    </script>
 
 </body>
+
 </html>
