@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 include "../includes/header.php";
+
 // Default: 1st of this month to today
 $today = date('Y-m-d');
 $firstDay = date('Y-m-01');
@@ -18,7 +19,7 @@ $sql_sales = "
     SELECT date(invoice_dt) AS date, SUM(net_amt_after_disc) AS total_sale
     FROM t_invoice_hdr
     WHERE date(invoice_dt) BETWEEN ? AND ?
-    GROUP BY invoice_dt
+    GROUP BY date(invoice_dt)
 ";
 $stmt_sales = $con->prepare($sql_sales);
 $stmt_sales->bind_param("ss", $from, $to);
@@ -30,7 +31,7 @@ $sql_returns = "
     SELECT date(sr_dt) AS date, SUM(net_amt) AS total_return
     FROM t_sr_hdr
     WHERE date(sr_dt) BETWEEN ? AND ?
-    GROUP BY sr_dt
+    GROUP BY date(sr_dt)
 ";
 $stmt_returns = $con->prepare($sql_returns);
 $stmt_returns->bind_param("ss", $from, $to);
@@ -53,7 +54,7 @@ $returnsData = [];
 
 $start = new DateTime($from);
 $end = new DateTime($to);
-$end->modify('+1 day'); // to include end date
+$end->modify('+1 day'); // Include the end date
 
 for ($date = $start; $date < $end; $date->modify('+1 day')) {
     $d = $date->format('Y-m-d');
@@ -73,11 +74,23 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        canvas {
-            max-height: 500px;
+        .chart-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        @media (max-width: 768px) {
+        canvas {
+            min-width: 600px;
+        }
+
+        @media (min-width: 768px) {
+            canvas {
+                width: 100% !important;
+                max-height: 500px;
+            }
+        }
+
+        @media (max-width: 767.98px) {
             canvas {
                 max-height: 300px;
             }
@@ -93,12 +106,12 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
         <!-- Date Filter -->
         <form method="get" class="row g-3 mb-4">
             <div class="col-sm-6 col-md-3">
-                <label>From</label>
-                <input type="date" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control">
+                <label for="from">From</label>
+                <input type="date" id="from" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control">
             </div>
             <div class="col-sm-6 col-md-3">
-                <label>To</label>
-                <input type="date" name="to" value="<?= htmlspecialchars($to) ?>" class="form-control">
+                <label for="to">To</label>
+                <input type="date" id="to" name="to" value="<?= htmlspecialchars($to) ?>" class="form-control">
             </div>
             <div class="col-md-3 align-self-end">
                 <button class="btn btn-primary w-100">Apply</button>
@@ -108,7 +121,9 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
         <!-- Chart Container -->
         <div class="card shadow-sm">
             <div class="card-body">
-                <canvas id="dualBarChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="dualBarChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -135,6 +150,7 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
                     intersect: false
@@ -151,15 +167,27 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
                         font: {
                             size: 18
                         }
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 12
+                            }
+                        }
                     }
                 },
                 scales: {
                     x: {
                         stacked: false,
                         ticks: {
-                            color: '#333',
-                            autoSkip: true,
-                            maxRotation: 45
+                            autoSkip: false,
+                            maxRotation: 90,
+                            minRotation: 45,
+                            font: {
+                                size: 10
+                            },
+                            color: '#333'
                         },
                         grid: {
                             display: false
@@ -169,6 +197,9 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
                         beginAtZero: true,
                         ticks: {
                             callback: value => '₹ ' + value,
+                            font: {
+                                size: 10
+                            },
                             color: '#333'
                         },
                         grid: {
