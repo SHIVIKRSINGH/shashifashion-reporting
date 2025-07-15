@@ -161,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <div class="container">
         <div class="login-card">
             <div class="top-art"></div>
+            <br></br>
             <h2>Welcome</h2>
 
             <?php if (!empty($error)): ?>
