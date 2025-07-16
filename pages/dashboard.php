@@ -9,39 +9,40 @@ if (!isset($_SESSION['user_id'])) {
 }
 include "../includes/header.php";
 
-// Determine today's date and first of current month
+// Date defaults
 $today = date('Y-m-d');
 $firstDay = date('Y-m-01');
 
-// Get user-selected date range or use default
+// Get filters
 $from = $_GET['from'] ?? $firstDay;
 $to = $_GET['to'] ?? $today;
+$branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
 
-// --- Fetch Sales Data for Chart ---
+// --- Sales Data for Chart ---
 $sql_sales = "
     SELECT DATE(invoice_dt) AS date, SUM(net_amt_after_disc) AS total_sale
     FROM t_invoice_hdr
-    WHERE DATE(invoice_dt) BETWEEN ? AND ?
+    WHERE DATE(invoice_dt) BETWEEN ? AND ? AND branch_id = ?
     GROUP BY DATE(invoice_dt)
 ";
 $stmt_sales = $con->prepare($sql_sales);
-$stmt_sales->bind_param("ss", $from, $to);
+$stmt_sales->bind_param("sss", $from, $to, $branch);
 $stmt_sales->execute();
 $res_sales = $stmt_sales->get_result();
 
-// --- Fetch Sale Return Data for Chart ---
+// --- Returns Data for Chart ---
 $sql_returns = "
     SELECT DATE(sr_dt) AS date, SUM(net_amt) AS total_return
     FROM t_sr_hdr
-    WHERE DATE(sr_dt) BETWEEN ? AND ?
+    WHERE DATE(sr_dt) BETWEEN ? AND ? AND branch_id = ?
     GROUP BY DATE(sr_dt)
 ";
 $stmt_returns = $con->prepare($sql_returns);
-$stmt_returns->bind_param("ss", $from, $to);
+$stmt_returns->bind_param("sss", $from, $to, $branch);
 $stmt_returns->execute();
 $res_returns = $stmt_returns->get_result();
 
-// --- Build Combined Chart Data ---
+// --- Build Chart Data ---
 $data = [];
 while ($row = $res_sales->fetch_assoc()) {
     $data[$row['date']]['sales'] = $row['total_sale'];
@@ -50,7 +51,6 @@ while ($row = $res_returns->fetch_assoc()) {
     $data[$row['date']]['returns'] = $row['total_return'];
 }
 
-// --- Fill missing days for chart ---
 $labels = [];
 $salesData = [];
 $returnsData = [];
@@ -66,18 +66,18 @@ for ($date = $start; $date < $end; $date->modify('+1 day')) {
     $returnsData[] = $data[$d]['returns'] ?? 0;
 }
 
-// --- Summary Cards (based on date range or today's data) ---
+// --- Summary Cards (daily or date range) ---
 $summary_from = ($_GET['from'] ?? null) ? $from : $today;
 $summary_to = ($_GET['to'] ?? null) ? $to : $today;
 
 $sql_summary = "
     SELECT 
-        (SELECT COALESCE(SUM(net_amt_after_disc), 0) FROM t_invoice_hdr WHERE DATE(invoice_dt) BETWEEN ? AND ?) AS total_sales,
-        (SELECT COALESCE(SUM(net_amt), 0) FROM t_sr_hdr WHERE DATE(sr_dt) BETWEEN ? AND ?) AS total_returns,
-        (SELECT COUNT(*) FROM t_invoice_hdr WHERE DATE(invoice_dt) BETWEEN ? AND ?) AS invoice_count
+        (SELECT COALESCE(SUM(net_amt_after_disc), 0) FROM t_invoice_hdr WHERE DATE(invoice_dt) BETWEEN ? AND ? AND branch_id = ?) AS total_sales,
+        (SELECT COALESCE(SUM(net_amt), 0) FROM t_sr_hdr WHERE DATE(sr_dt) BETWEEN ? AND ? AND branch_id = ?) AS total_returns,
+        (SELECT COUNT(*) FROM t_invoice_hdr WHERE DATE(invoice_dt) BETWEEN ? AND ? AND branch_id = ?) AS invoice_count
 ";
 $stmt_summary = $con->prepare($sql_summary);
-$stmt_summary->bind_param("ssssss", $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to);
+$stmt_summary->bind_param("sssssssss", $summary_from, $summary_to, $branch, $summary_from, $summary_to, $branch, $summary_from, $summary_to, $branch);
 $stmt_summary->execute();
 $res_summary = $stmt_summary->get_result();
 $summary = $res_summary->fetch_assoc();
@@ -87,6 +87,7 @@ $total_returns = $summary['total_returns'];
 $invoice_count = $summary['invoice_count'];
 $net_total = $total_sales - $total_returns;
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -148,6 +149,15 @@ $net_total = $total_sales - $total_returns;
 
         <!-- Date Filter -->
         <form method="get" class="row g-3 mb-4">
+            <div class="col-sm-6 col-md-3">
+                <label for="branch">Branch</label>
+                <select name="branch" id="branch" class="form-select">
+                    <option value="SHASHI-ND" <?= $branch === 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
+                    <option value="SHIVI-ND" <?= $branch === 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
+                    <!-- Add more branches here -->
+                </select>
+            </div>
+
             <div class="col-sm-6 col-md-3">
                 <label for="from">From</label>
                 <input type="date" id="from" name="from" value="<?= htmlspecialchars($from) ?>" class="form-control">
