@@ -9,13 +9,14 @@ error_reporting(E_ALL);
 // Default date range
 $from = $_GET['from'] ?? date('Y-m-d');
 $to = $_GET['to'] ?? date('Y-m-d');
+$branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
 
 // Fetch invoices
 $invoices = [];
 $total = 0;
 
-if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ? ORDER BY invoice_no ASC")) {
-    $stmt->bind_param("ss", $from, $to);
+if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no ASC")) {
+    $stmt->bind_param("sss", $from, $to, $branch);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -25,8 +26,8 @@ if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, ne
 }
 
 // Fetch total amount
-if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ?")) {
-    $stmt->bind_param("ss", $from, $to);
+if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ?")) {
+    $stmt->bind_param("sss", $from, $to, $branch);
     $stmt->execute();
     $result = $stmt->get_result();
     $totalRow = $result->fetch_assoc();
@@ -51,6 +52,14 @@ if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoic
         <h2 class="mb-4">Invoice Report</h2>
 
         <form method="get" class="row g-3 mb-4">
+            <div class="col-sm-6 col-md-3">
+                <label for="branch">Branch</label>
+                <select name="branch" id="branch" class="form-select">
+                    <option value="SHASHI-ND" <?= $branch === 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
+                    <option value="SHIVI-ND" <?= $branch === 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
+                    <!-- Add more branches here -->
+                </select>
+            </div>
             <div class="col-md-3">
                 <label class="form-label">From Date</label>
                 <input type="date" class="form-control" name="from" value="<?= htmlspecialchars($from) ?>">
