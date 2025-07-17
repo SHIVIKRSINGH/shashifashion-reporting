@@ -15,7 +15,7 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
 $invoices = [];
 $total = 0;
 
-if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no ASC")) {
+if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
     $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
