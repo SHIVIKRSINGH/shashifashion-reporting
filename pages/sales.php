@@ -16,7 +16,7 @@ $invoices = [];
 $total = 0;
 
 if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no ASC")) {
-    $stmt->bind_param("sss", $from, $to, $branch);
+    $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -27,7 +27,7 @@ if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, ne
 
 // Fetch total amount
 if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE branch_id=? and invoice_dt BETWEEN ? AND ?")) {
-    $stmt->bind_param("sss", $from, $to, $branch);
+    $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     $totalRow = $result->fetch_assoc();
