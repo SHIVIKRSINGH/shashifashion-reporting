@@ -81,6 +81,7 @@ if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE
                     <th>Receipt Date</th>
                     <th>Bill Date</th>
                     <th>Net Amount</th>
+                    <th>Action</th> <!-- ✅ New column -->
                 </tr>
             </thead>
             <tbody>
@@ -91,13 +92,21 @@ if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE
                         <td><?= htmlspecialchars($row['receipt_date']) ?></td>
                         <td><?= htmlspecialchars($row['bill_date']) ?></td>
                         <td><?= number_format($row['net_amt'], 2) ?></td>
+                        <td>
+                            <a href="purchase_view.php?receipt_id=<?= urlencode($row['receipt_id']) ?>&branch_id=<?= urlencode($branch) ?>" class="btn btn-sm btn-outline-primary" title="View Details">
+                                🔍 View
+                            </a>
+                            <a href="upload_photos.php?receipt_id=<?= urlencode($row['receipt_id']) ?>&branch_id=<?= urlencode($branch) ?>" class="btn btn-sm btn-outline-success" title="Upload Bill Images">
+                                📷 Upload
+                            </a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
 
         <div class="mt-3">
-            <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
+            <h5>Total Purchase Value: ₹ <?= number_format($total, 2) ?></h5>
         </div>
     </div>
 
