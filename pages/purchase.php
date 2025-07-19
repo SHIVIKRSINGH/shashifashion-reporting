@@ -15,7 +15,7 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
 $pruchase = [];
 $total = 0;
 
-if ($stmt = $con->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, net_amt FROM t_receipt_hdr WHERE branch_id=? and receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
+if ($stmt = $con->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, net_amt FROM t_receipt_hdr WHERE ltrim(rtrim(branch_id))=? and receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
     $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -26,7 +26,7 @@ if ($stmt = $con->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, 
 }
 
 // Fetch total amount
-if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE branch_id=? and receipt_date BETWEEN ? AND ?")) {
+if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE ltrim(rtrim(branch_id))=? and receipt_date BETWEEN ? AND ?")) {
     $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
