@@ -84,7 +84,7 @@ if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($invoices as $row): ?>
+                <?php foreach ($pruchase as $row): ?>
                     <tr>
                         <td><?= htmlspecialchars($row['receipt_id']) ?></td>
                         <td><?= htmlspecialchars($row['supp_id'] ?? '-') ?></td>
