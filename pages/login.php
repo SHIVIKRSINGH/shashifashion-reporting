@@ -4,40 +4,63 @@ require_once "../includes/config.php";
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $username = trim($_POST['username']);
+    $password = md5(trim($_POST['password'])); // ✅ MD5 encoding
 
     $stmt = $con->prepare("
-        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.role_name
+        SELECT u.user_id, u.username, u.password, u.role_id, u.branch_id, r.role_name
         FROM m_user u
         JOIN m_role r ON r.role_id = u.role_id
-        WHERE u.username = ? AND u.password = ?
+        WHERE u.username = ? AND u.password = ? AND u.is_active = 1
+        LIMIT 1
     ");
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
     $res = $stmt->get_result();
 
     if ($res->num_rows === 1) {
-        session_regenerate_id(true);
         $user = $res->fetch_assoc();
+        session_regenerate_id(true);
+
+        // 🔐 Save session info
         $_SESSION['user_id']    = $user['user_id'];
         $_SESSION['username']   = $user['username'];
         $_SESSION['role_id']    = $user['role_id'];
         $_SESSION['role_name']  = $user['role_name'];
         $_SESSION['branch_id']  = $user['branch_id'];
 
+        // 🔁 Load branch DB details if user has a branch
+        if (!empty($user['branch_id'])) {
+            $bstmt = $con->prepare("
+                SELECT db_host, db_user, db_password, db_name
+                FROM m_branch_sync_config
+                WHERE branch_id = ?
+            ");
+            $bstmt->bind_param("s", $user['branch_id']);
+            $bstmt->execute();
+            $branchRes = $bstmt->get_result();
+
+            if ($branchRes->num_rows === 1) {
+                $branchDb = $branchRes->fetch_assoc();
+                $_SESSION['branch_db'] = [
+                    'host'     => $branchDb['db_host'],
+                    'user'     => $branchDb['db_user'],
+                    'password' => $branchDb['db_password'],
+                    'name'     => $branchDb['db_name']
+                ];
+                $_SESSION['db_selected'] = $branchDb['name']; // so config.php can connect
+            }
+        }
+
         header("Location: dashboard.php");
         exit;
     } else {
-        $error = "Invalid username or password";
+        $error = "❌ Invalid username or password.";
     }
 }
 ?>
 
-<!-- Login HTML stays as-is from your original -->
-
-
-
+<!-- ✅ Login Page HTML -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -46,10 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login - Shashi Fashion</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Google Fonts -->
+    <!-- Fonts & CSS -->
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
-
-    <!-- Bootstrap (optional, for consistent form controls) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
@@ -73,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
             border-radius: 30px;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
             padding: 40px 30px 60px;
             position: relative;
         }
@@ -100,13 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .form-group {
             margin-bottom: 20px;
-            position: relative;
             z-index: 2;
-        }
-
-        label {
-            font-size: 14px;
-            color: #555;
+            position: relative;
         }
 
         input[type="text"],
@@ -116,8 +131,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid #ddd;
             border-radius: 10px;
             font-size: 16px;
-            outline: none;
-            transition: 0.3s;
         }
 
         input:focus {
@@ -136,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: 0.3s;
         }
 
         .signin-btn:hover {
@@ -148,17 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: space-between;
             margin-top: 30px;
             font-size: 14px;
-            color: #666;
         }
 
         .links a {
             text-decoration: none;
             color: #a164dd;
             font-weight: 500;
-        }
-
-        .links a:hover {
-            text-decoration: underline;
         }
 
         .alert {
@@ -173,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="container">
         <div class="login-card">
             <div class="top-art"></div>
-            <br></br>
             <h2>Welcome</h2>
 
             <?php if (!empty($error)): ?>
@@ -182,12 +188,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form method="POST" autocomplete="off">
                 <div class="form-group">
-                    <label for="username">Username</label>
+                    <label>Username</label>
                     <input type="text" name="username" required placeholder="Enter username">
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Password</label>
+                    <label>Password</label>
                     <input type="password" name="password" required placeholder="Enter password">
                 </div>
 

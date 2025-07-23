@@ -1,39 +1,45 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-// Check login
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+// 🔒 Redirect if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: ../pages/login.php");
     exit;
 }
 
+// 🔹 Session Shortcuts
 $user_id   = $_SESSION['user_id'];
 $role_id   = $_SESSION['role_id'] ?? '';
 $role_name = $_SESSION['role_name'] ?? '';
-$branch_id = $_SESSION['branch_id'] ?? 0;
+$branch_id = $_SESSION['branch_id'] ?? '';
+$username  = $_SESSION['username'] ?? '';
 
-// Fetch menu items based on role
-$sql = "SELECT m.*
-        FROM m_menu m
-        JOIN m_permission p ON m.menu_id = p.menu_id
-        WHERE p.role_id = ?
-        ORDER BY m.parent_id, m.sort_order";
-
+// 🔹 Fetch Menu Items Based on Role
+$sql = "
+    SELECT m.*
+    FROM m_menu m
+    JOIN m_permission p ON m.menu_id = p.menu_id
+    WHERE p.role_id = ?
+    AND m.is_active = 1
+    ORDER BY m.parent_id, m.sort_order
+";
 $stmt = $con->prepare($sql);
 $stmt->bind_param("i", $role_id);
 $stmt->execute();
 $menus = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Build menu hierarchy
+// 🔹 Build Menu Tree
 $tree = [];
-foreach ($menus as $m) {
-    if (is_null($m['parent_id'])) {
-        $tree[$m['menu_id']] = $m + ['children' => []];
+foreach ($menus as $menu) {
+    if (is_null($menu['parent_id']) || $menu['parent_id'] === '') {
+        $tree[$menu['menu_id']] = $menu + ['children' => []];
     }
 }
-foreach ($menus as $m) {
-    if (!is_null($m['parent_id']) && isset($tree[$m['parent_id']])) {
-        $tree[$m['parent_id']]['children'][] = $m;
+foreach ($menus as $menu) {
+    if (!is_null($menu['parent_id']) && isset($tree[$menu['parent_id']])) {
+        $tree[$menu['parent_id']]['children'][] = $menu;
     }
 }
 ?>
@@ -49,6 +55,7 @@ foreach ($menus as $m) {
         body {
             display: flex;
             min-height: 100vh;
+            margin: 0;
         }
 
         .sidebar {
@@ -87,27 +94,42 @@ foreach ($menus as $m) {
             background: #fff;
             padding: 10px 20px;
             border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
     </style>
 </head>
 
 <body>
+
+    <!-- Sidebar -->
     <div class="sidebar">
         <a class="navbar-brand text-white fw-bold mb-4 d-block" href="dashboard.php">Shashi Fashion</a>
         <?php foreach ($tree as $parent): ?>
             <?php if (empty($parent['children'])): ?>
-                <a href="<?= htmlspecialchars($parent['url']) ?>"><i class="<?= $parent['icon'] ?>"></i> <?= $parent['name'] ?></a>
+                <a href="<?= htmlspecialchars($parent['menu_url']) ?>">
+                    <i class="<?= $parent['menu_icon'] ?>"></i> <?= htmlspecialchars($parent['menu_name']) ?>
+                </a>
             <?php else: ?>
-                <div class="menu-title"><i class="<?= $parent['icon'] ?>"></i> <?= $parent['name'] ?></div>
+                <div class="menu-title">
+                    <i class="<?= $parent['menu_icon'] ?>"></i> <?= htmlspecialchars($parent['menu_name']) ?>
+                </div>
                 <?php foreach ($parent['children'] as $child): ?>
-                    <a class="ms-3" href="<?= htmlspecialchars($child['url']) ?>"><i class="<?= $child['icon'] ?>"></i> <?= $child['name'] ?></a>
+                    <a class="ms-3" href="<?= htmlspecialchars($child['menu_url']) ?>">
+                        <i class="<?= $child['menu_icon'] ?>"></i> <?= htmlspecialchars($child['menu_name']) ?>
+                    </a>
                 <?php endforeach; ?>
             <?php endif; ?>
         <?php endforeach; ?>
     </div>
 
+    <!-- Main Content -->
     <div class="content">
-        <div class="topbar d-flex justify-content-between align-items-center">
-            <h5>Welcome, <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></h5>
-            <a class="nav-link text-danger" href="logout.php">Logout</a>
+        <div class="topbar">
+            <div>
+                Welcome, <strong><?= htmlspecialchars($username) ?></strong> (<?= $role_name ?>) |
+                Branch: <?= $branch_id ?: 'All Branches' ?>
+            </div>
+            <a class="nav-link text-danger" href="../logout.php">Logout</a>
         </div>
