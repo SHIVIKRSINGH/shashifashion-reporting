@@ -44,7 +44,7 @@ $branch_db->query("SET time_zone = '+05:30'");
 
 
 
-if ($stmt = $branch_db->prepare("SELECT receipt_id, supp_id, date(receipt_date), date(bill_date), net_amt FROM t_receipt_hdr where receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
+if ($stmt = $branch_db->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, net_amt FROM t_receipt_hdr where receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
     $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -55,7 +55,7 @@ if ($stmt = $branch_db->prepare("SELECT receipt_id, supp_id, date(receipt_date),
 }
 
 // Fetch total amount
-if ($stmt = $branch_db->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE date(receipt_date) BETWEEN ? AND ?")) {
+if ($stmt = $branch_db->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE receipt_date BETWEEN ? AND ?")) {
     $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
