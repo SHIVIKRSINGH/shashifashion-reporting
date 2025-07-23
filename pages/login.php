@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = md5($_POST['password'] ?? '');
 
     $stmt = $con->prepare("
-        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.name AS role_name
+        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.role_name AS role_name
         FROM m_user u
         JOIN m_role r ON r.user_id = u.role_id
         WHERE u.username = ? AND u.password = ?
