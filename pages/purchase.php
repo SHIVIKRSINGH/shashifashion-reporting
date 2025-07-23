@@ -14,9 +14,38 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
 // Fetch purchase
 $pruchase = [];
 $total = 0;
+$role_name       = $_SESSION['role_name'];
+$session_branch  = $_SESSION['branch_id'] ?? '';
+$selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
 
-if ($stmt = $con->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, net_amt FROM t_receipt_hdr WHERE ltrim(rtrim(branch_id))=? and receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
-    $stmt->bind_param("sss", $branch, $from, $to);
+// 🔌 Connect to branch DB dynamically
+$branch_db = null;
+$stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
+$stmt->bind_param("s", $selected_branch);
+$stmt->execute();
+$res = $stmt->get_result();
+
+if ($res->num_rows === 0) {
+    die("❌ Branch config not found for '$selected_branch'");
+}
+$config = $res->fetch_assoc();
+
+$branch_db = new mysqli(
+    $config['db_host'],
+    $config['db_user'],
+    $config['db_password'],
+    $config['db_name']
+);
+if ($branch_db->connect_error) {
+    die("❌ Branch DB connection failed: " . $branch_db->connect_error);
+}
+$branch_db->set_charset('utf8mb4');
+$branch_db->query("SET time_zone = '+05:30'");
+
+
+
+if ($stmt = $branch_db->prepare("SELECT receipt_id, supp_id, date(receipt_date), date(bill_date), net_amt FROM t_receipt_hdr where receipt_date BETWEEN ? AND ? ORDER BY receipt_id desc")) {
+    $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -26,8 +55,8 @@ if ($stmt = $con->prepare("SELECT receipt_id, supp_id, receipt_date, bill_date, 
 }
 
 // Fetch total amount
-if ($stmt = $con->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE ltrim(rtrim(branch_id))=? and receipt_date BETWEEN ? AND ?")) {
-    $stmt->bind_param("sss", $branch, $from, $to);
+if ($stmt = $branch_db->prepare("SELECT SUM(net_amt) as total FROM t_receipt_hdr WHERE date(receipt_date) BETWEEN ? AND ?")) {
+    $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     $totalRow = $result->fetch_assoc();
