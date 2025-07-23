@@ -8,7 +8,7 @@ session_start();
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $password = md5($_POST['password'] ?? '');
 
     $stmt = $con->prepare("
@@ -22,16 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $res = $stmt->get_result();
 
     if ($res->num_rows === 1) {
+        session_regenerate_id(true); // For security
+
         $user = $res->fetch_assoc();
         $_SESSION['user_id']    = $user['user_id'];
         $_SESSION['username']   = $user['username'];
-        $_SESSION['role_id']       = $user['role_id'];
+        $_SESSION['role_id']    = $user['role_id'];
         $_SESSION['role_name']  = $user['role_name'];
-
-        // For Manager: fix branch; Admin works with central default
-        if ($user['role_name'] === 'Manager') {
-            $_SESSION['branch_id'] = $user['branch_id'];
-        }
+        $_SESSION['branch_id']  = $user['branch_id'];  // Always store branch_id if needed
 
         header("Location: dashboard.php");
         exit;
