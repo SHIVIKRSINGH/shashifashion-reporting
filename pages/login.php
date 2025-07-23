@@ -9,7 +9,7 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
-    $password = md5($_POST['password'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
     $stmt = $con->prepare("
         SELECT u.user_id, u.username, u.role_id, u.branch_id, r.role_name AS role_name
