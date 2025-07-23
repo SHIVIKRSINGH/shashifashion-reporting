@@ -2,22 +2,34 @@
 require_once "../includes/config.php";
 session_start();
 
-$error = "";
+$error = '';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = md5($_POST['password'] ?? '');
 
-    $stmt = $con->prepare("SELECT * FROM m_users WHERE username = ? AND password = ?");
+    $stmt = $con->prepare("
+        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.name AS role_name
+        FROM m_user u
+        JOIN m_role r ON r.user_id = u.role_id
+        WHERE u.username = ? AND u.password = ?
+    ");
     $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
     $res = $stmt->get_result();
 
     if ($res->num_rows === 1) {
         $user = $res->fetch_assoc();
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
+        $_SESSION['user_id']    = $user['user_id'];
+        $_SESSION['username']   = $user['username'];
+        $_SESSION['role_id']       = $user['role_id'];
+        $_SESSION['role_name']  = $user['role_name'];
+
+        // For Manager: fix branch; Admin works with central default
+        if ($user['role_name'] === 'Manager') {
+            $_SESSION['branch_id'] = $user['branch_id'];
+        }
+
         header("Location: dashboard.php");
         exit;
     } else {
@@ -25,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">

@@ -2,6 +2,11 @@
 require_once "../includes/config.php";
 include "../includes/header.php";
 
+// Error reporting
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+
 $receipt_id = $_GET['receipt_id'] ?? '';
 $branch_id = $_GET['branch_id'] ?? '';
 
@@ -52,70 +57,73 @@ $stmt->close();
 
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>GRN View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-light">
 
-<div class="container my-5">
-    <h3>Purchase Details (GRN)</h3>
+    <div class="container my-5">
+        <h3>Purchase Details (GRN)</h3>
 
-    <?php if (!$receipt): ?>
-        <div class="alert alert-warning">No GRN found for this receipt ID.</div>
-    <?php else: ?>
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Receipt #<?= htmlspecialchars($receipt['receipt_id']) ?></h5>
-                <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
-                   <strong>Address:</strong> <?= htmlspecialchars($receipt['address_1']) ?>, <?= htmlspecialchars($receipt['address_2']) ?>, <?= htmlspecialchars($receipt['address_3']) ?><br>
-                   <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
-                   <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)<br>
-                   <strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
-                   <strong>Gross Amount:</strong> ₹<?= number_format($receipt['gross_amt'], 2) ?><br>
-                   <strong>Net Amount:</strong> ₹<?= number_format($receipt['net_amt'], 2) ?>
-                </p>
+        <?php if (!$receipt): ?>
+            <div class="alert alert-warning">No GRN found for this receipt ID.</div>
+        <?php else: ?>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Receipt #<?= htmlspecialchars($receipt['receipt_id']) ?></h5>
+                    <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
+                        <strong>Address:</strong> <?= htmlspecialchars($receipt['address_1']) ?>, <?= htmlspecialchars($receipt['address_2']) ?>, <?= htmlspecialchars($receipt['address_3']) ?><br>
+                        <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
+                        <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)<br>
+                        <strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
+                        <strong>Gross Amount:</strong> ₹<?= number_format($receipt['gross_amt'], 2) ?><br>
+                        <strong>Net Amount:</strong> ₹<?= number_format($receipt['net_amt'], 2) ?>
+                    </p>
+                </div>
             </div>
-        </div>
 
-        <table class="table table-bordered">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Sl</th>
-                    <th>Item Name</th>
-                    <th>HSN</th>
-                    <th>Qty</th>
-                    <th>Pur Rate</th>
-                    <th>Disc%</th>
-                    <th>VAT%</th>
-                    <th>Net Amt</th>
-                    <th>MRP</th>
-                    <th>Sales Price</th>
-                    <th>Cess%</th>
-                    <th>On Item</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($items as $row): ?>
+            <table class="table table-bordered">
+                <thead class="table-secondary">
                     <tr>
-                        <td><?= $row['sl_no'] ?></td>
-                        <td><?= htmlspecialchars($row['item_name']) ?></td>
-                        <td><?= $row['hsn_code'] ?></td>
-                        <td><?= $row['qty'] ?></td>
-                        <td><?= $row['pur_rate'] ?></td>
-                        <td><?= $row['disc_per'] ?></td>
-                        <td><?= $row['vat_per'] ?></td>
-                        <td><?= $row['d_net_amt'] ?></td>
-                        <td><?= $row['mrp'] ?></td>
-                        <td><?= $row['sales_price'] ?></td>
-                        <td><?= $row['cess_perc'] ?></td>
-                        <td><?= htmlspecialchars($row['on_item_name'] ?? '-') ?></td>
+                        <th>Sl</th>
+                        <th>Item Name</th>
+                        <th>HSN</th>
+                        <th>Qty</th>
+                        <th>Pur Rate</th>
+                        <th>Disc%</th>
+                        <th>VAT%</th>
+                        <th>Net Amt</th>
+                        <th>MRP</th>
+                        <th>Sales Price</th>
+                        <th>Cess%</th>
+                        <th>On Item</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
-</div>
+                </thead>
+                <tbody>
+                    <?php foreach ($items as $row): ?>
+                        <tr>
+                            <td><?= $row['sl_no'] ?></td>
+                            <td><?= htmlspecialchars($row['item_name']) ?></td>
+                            <td><?= $row['hsn_code'] ?></td>
+                            <td><?= $row['qty'] ?></td>
+                            <td><?= $row['pur_rate'] ?></td>
+                            <td><?= $row['disc_per'] ?></td>
+                            <td><?= $row['vat_per'] ?></td>
+                            <td><?= $row['d_net_amt'] ?></td>
+                            <td><?= $row['mrp'] ?></td>
+                            <td><?= $row['sales_price'] ?></td>
+                            <td><?= $row['cess_perc'] ?></td>
+                            <td><?= htmlspecialchars($row['on_item_name'] ?? '-') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
 
 </body>
+
 </html>

@@ -1,51 +1,51 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-
-// Ensure session is started
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Fetch user ID from session
-$user_id = $_SESSION['user_id'] ?? 0;
+// Redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
 
-// Fetch menu items allowed for this user
+$user_id = $_SESSION['user_id'];
+$role_id = $_SESSION['role_id'] ?? '';
+$role_name = $_SESSION['role_name'] ?? '';
+
+$branch_id = $_SESSION['branch_id'] ?? 0;
+
+// Get menus based on role_id (NOT user_id)
 $sql = "SELECT m.*
-        FROM m_menus m
-        JOIN m_permissions p ON m.id = p.menu_id
-        WHERE p.user_id = ?
+        FROM m_menu m
+        JOIN m_permission p ON m.menu_id = p.menu_id
+        WHERE p.role_id = ?
         ORDER BY m.parent_id, m.sort_order";
 
 $stmt = $con->prepare($sql);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("i", $role_id);  // Note: role_id is a integer like 'Admin'=1, 'Manager'=2
 $stmt->execute();
-$result = $stmt->get_result();
+$menus = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-$menus = [];
-while ($row = $result->fetch_assoc()) {
-    $menus[] = $row;
-}
-
-// Organize menus: parent → children
-$menu_tree = [];
-foreach ($menus as $menu) {
-    if ($menu['parent_id'] == NULL) {
-        $menu_tree[$menu['id']] = $menu;
-        $menu_tree[$menu['id']]['children'] = [];
+// Build menu tree
+$tree = [];
+foreach ($menus as $m) {
+    if (is_null($m['parent_id'])) {
+        $tree[$m['menu_id']] = $m + ['children' => []];
     }
 }
-foreach ($menus as $menu) {
-    if ($menu['parent_id']) {
-        $menu_tree[$menu['parent_id']]['children'][] = $menu;
+foreach ($menus as $m) {
+    if (!is_null($m['parent_id']) && isset($tree[$m['parent_id']])) {
+        $tree[$m['parent_id']]['children'][] = $m;
     }
 }
 ?>
-<!-- Modern Bootstrap-based Layout -->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>ShashiFashion Dashboard</title>
+    <title>ShashiFashion</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -96,14 +96,14 @@ foreach ($menus as $menu) {
 
 <body>
     <div class="sidebar">
-        <a class="navbar-brand" href="dashboard.php">Shashi Fashion</a>
-        <?php foreach ($menu_tree as $menu): ?>
-            <?php if (empty($menu['children'])): ?>
-                <a href="<?= $menu['url'] ?>"><i class="<?= $menu['icon'] ?>"></i> <?= $menu['name'] ?></a>
+        <a class="navbar-brand text-white fw-bold mb-4 d-block" href="dashboard.php">Shashi Fashion</a>
+        <?php foreach ($tree as $parent): ?>
+            <?php if (empty($parent['children'])): ?>
+                <a href="<?= htmlspecialchars($parent['url']) ?>"><i class="<?= $parent['icon'] ?>"></i> <?= $parent['name'] ?></a>
             <?php else: ?>
-                <div class="menu-title"><i class="<?= $menu['icon'] ?>"></i> <?= $menu['name'] ?></div>
-                <?php foreach ($menu['children'] as $child): ?>
-                    <a class="ms-3" href="<?= $child['url'] ?>"><i class="<?= $child['icon'] ?>"></i> <?= $child['name'] ?></a>
+                <div class="menu-title"><i class="<?= $parent['icon'] ?>"></i> <?= $parent['name'] ?></div>
+                <?php foreach ($parent['children'] as $child): ?>
+                    <a class="ms-3" href="<?= htmlspecialchars($child['url']) ?>"><i class="<?= $child['icon'] ?>"></i> <?= $child['name'] ?></a>
                 <?php endforeach; ?>
             <?php endif; ?>
         <?php endforeach; ?>
@@ -111,6 +111,6 @@ foreach ($menus as $menu) {
 
     <div class="content">
         <div class="topbar d-flex justify-content-between align-items-center">
-            <h5>Welcome, <?= $_SESSION['name'] ?? 'User' ?></h5>
+            <h5>Welcome, <?= htmlspecialchars($_SESSION['name'] ?? 'User') ?></h5>
             <a class="nav-link text-danger" href="logout.php">Logout</a>
         </div>
