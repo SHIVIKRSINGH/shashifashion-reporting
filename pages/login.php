@@ -5,7 +5,7 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
-    $password = md5(trim($_POST['password'])); // ✅ MD5 encoding
+    $password = md5(trim($_POST['password'])); // ✅ MD5 for security
 
     $stmt = $con->prepare("
         SELECT u.user_id, u.username, u.password, u.role_id, u.branch_id, r.role_name
@@ -22,15 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $res->fetch_assoc();
         session_regenerate_id(true);
 
-        // 🔐 Save session info
+        // ✅ Set session variables
         $_SESSION['user_id']    = $user['user_id'];
         $_SESSION['username']   = $user['username'];
         $_SESSION['role_id']    = $user['role_id'];
         $_SESSION['role_name']  = $user['role_name'];
         $_SESSION['branch_id']  = $user['branch_id'];
 
-        // 🔁 Load branch DB details if user has a branch
-        if (!empty($user['branch_id'])) {
+        // ✅ If manager: Load their branch DB config now
+        if (!empty($user['branch_id']) && strtolower($user['role_name']) === 'manager') {
             $bstmt = $con->prepare("
                 SELECT db_host, db_user, db_password, db_name
                 FROM m_branch_sync_config
@@ -48,10 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'password' => $branchDb['db_password'],
                     'name'     => $branchDb['db_name']
                 ];
-                $_SESSION['db_selected'] = $branchDb['name']; // so config.php can connect
             }
         }
 
+        // ✅ Redirect to dashboard
         header("Location: dashboard.php");
         exit;
     } else {
@@ -68,11 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Login - Shashi Fashion</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Fonts & CSS -->
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <style>
         body,
         html {

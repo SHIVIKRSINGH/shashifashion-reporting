@@ -15,34 +15,29 @@ $role_id   = $_SESSION['role_id'] ?? '';
 $role_name = $_SESSION['role_name'] ?? '';
 $branch_id = $_SESSION['branch_id'] ?? '';
 $username  = $_SESSION['username'] ?? '';
+$db_selected = $_SESSION['db_selected'] ?? '';
 
-// 🔹 Fetch Menu Items Based on Role
-$sql = "
-    SELECT m.*
-    FROM m_menu m
-    JOIN m_permission p ON m.menu_id = p.menu_id
-    WHERE p.role_id = ?
-    AND m.is_active = 1
-    ORDER BY m.parent_id, m.sort_order
-";
-$stmt = $con->prepare($sql);
-$stmt->bind_param("i", $role_id);
-$stmt->execute();
-$menus = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+// 🔹 Branch List (for admin only)
+$branchList = [];
+$default_branch_id = '';
 
-// 🔹 Build Menu Tree
-$tree = [];
-foreach ($menus as $menu) {
-    if (is_null($menu['parent_id']) || $menu['parent_id'] === '') {
-        $tree[$menu['menu_id']] = $menu + ['children' => []];
+if (strtolower($role_name) === 'admin') {
+    $branchRes = $con->query("SELECT branch_id, db_name FROM m_branch_sync_config ORDER BY branch_id");
+    while ($row = $branchRes->fetch_assoc()) {
+        $branchList[] = $row;
     }
-}
-foreach ($menus as $menu) {
-    if (!is_null($menu['parent_id']) && isset($tree[$menu['parent_id']])) {
-        $tree[$menu['parent_id']]['children'][] = $menu;
+
+    // Use session branch_id or first available
+    if (!isset($_SESSION['selected_branch_id']) && count($branchList)) {
+        $_SESSION['selected_branch_id'] = $branchList[0]['branch_id'];
     }
+
+    $selected_branch_id = $_SESSION['selected_branch_id'] ?? '';
+} else {
+    $selected_branch_id = $branch_id;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -98,6 +93,12 @@ foreach ($menus as $menu) {
             justify-content: space-between;
             align-items: center;
         }
+
+        .branch-select {
+            font-size: 14px;
+            margin-left: 10px;
+            padding: 3px 6px;
+        }
     </style>
 </head>
 
@@ -106,6 +107,35 @@ foreach ($menus as $menu) {
     <!-- Sidebar -->
     <div class="sidebar">
         <a class="navbar-brand text-white fw-bold mb-4 d-block" href="dashboard.php">Shashi Fashion</a>
+        <?php
+        // 🔹 Fetch Menus
+        $sql = "
+        SELECT m.*
+        FROM m_menu m
+        JOIN m_permission p ON m.menu_id = p.menu_id
+        WHERE p.role_id = ?
+        AND m.is_active = 1
+        ORDER BY m.parent_id, m.sort_order
+    ";
+        $stmt = $con->prepare($sql);
+        $stmt->bind_param("i", $role_id);
+        $stmt->execute();
+        $menus = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 🔹 Build Menu Tree
+        $tree = [];
+        foreach ($menus as $menu) {
+            if (is_null($menu['parent_id']) || $menu['parent_id'] === '') {
+                $tree[$menu['menu_id']] = $menu + ['children' => []];
+            }
+        }
+        foreach ($menus as $menu) {
+            if (!is_null($menu['parent_id']) && isset($tree[$menu['parent_id']])) {
+                $tree[$menu['parent_id']]['children'][] = $menu;
+            }
+        }
+        ?>
+
         <?php foreach ($tree as $parent): ?>
             <?php if (empty($parent['children'])): ?>
                 <a href="<?= htmlspecialchars($parent['menu_url']) ?>">
@@ -129,7 +159,20 @@ foreach ($menus as $menu) {
         <div class="topbar">
             <div>
                 Welcome, <strong><?= htmlspecialchars($username) ?></strong> (<?= $role_name ?>) |
-                Branch: <?= $branch_id ?: 'All Branches' ?>
+                Branch:
+                <?php if (strtolower($role_name) === 'admin'): ?>
+                    <form method="POST" action="" style="display:inline;">
+                        <select name="selected_branch_id" class="branch-select" onchange="this.form.submit()">
+                            <?php foreach ($branchList as $b): ?>
+                                <option value="<?= $b['branch_id'] ?>" <?= $b['branch_id'] === $selected_branch_id ? 'selected' : '' ?>>
+                                    <?= $b['branch_id'] ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </form>
+                <?php else: ?>
+                    <span class="text-muted"><?= $branch_id ?></span>
+                <?php endif; ?>
             </div>
             <a class="nav-link text-danger" href="../logout.php">Logout</a>
         </div>

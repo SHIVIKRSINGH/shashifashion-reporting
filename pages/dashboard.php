@@ -1,35 +1,52 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db_utils.php';
 include "../includes/header.php";
 
-// Check login
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
     exit;
 }
 
-$role_name = $_SESSION['role_name'];
-$session_branch = $_SESSION['branch_id'];
+$role_name       = $_SESSION['role_name'];
+$session_branch  = $_SESSION['branch_id'] ?? '';
+$selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
 
-// Filters
-$branch = $_GET['branch'] ?? $session_branch;
-$from = $_GET['from'] ?? '';
-$to = $_GET['to'] ?? '';
-
-// Defaults
-$today = date('Y-m-d');
+// Dates
+$from        = $_GET['from'] ?? '';
+$to          = $_GET['to'] ?? '';
+$today       = date('Y-m-d');
 $month_start = date('Y-m-01');
 $summary_from = $from ?: $today;
-$summary_to = $to ?: $today;
-$chart_from = $from ?: $month_start;
-$chart_to = $to ?: $today;
+$summary_to   = $to ?: $today;
+$chart_from   = $from ?: $month_start;
+$chart_to     = $to ?: $today;
 
-// ✅ Get branch DB connection dynamically
-$branchCon = getBranchConnection($branch);
+// 🔌 Connect to branch DB dynamically
+$branch_db = null;
+$stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
+$stmt->bind_param("s", $selected_branch);
+$stmt->execute();
+$res = $stmt->get_result();
 
-// 🔸 Sales data
-$stmt = $branchCon->prepare("
+if ($res->num_rows === 0) {
+    die("❌ Branch config not found for '$selected_branch'");
+}
+$config = $res->fetch_assoc();
+
+$branch_db = new mysqli(
+    $config['db_host'],
+    $config['db_user'],
+    $config['db_password'],
+    $config['db_name']
+);
+if ($branch_db->connect_error) {
+    die("❌ Branch DB connection failed: " . $branch_db->connect_error);
+}
+$branch_db->set_charset('utf8mb4');
+$branch_db->query("SET time_zone = '+05:30'");
+
+// 🔸 Sales
+$stmt = $branch_db->prepare("
     SELECT DATE(invoice_dt) AS date, SUM(net_amt_after_disc) AS total_sale
     FROM t_invoice_hdr
     WHERE DATE(invoice_dt) BETWEEN ? AND ?
@@ -39,8 +56,8 @@ $stmt->bind_param("ss", $chart_from, $chart_to);
 $stmt->execute();
 $res_sales = $stmt->get_result();
 
-// 🔸 Return data
-$stmt = $branchCon->prepare("
+// 🔸 Returns
+$stmt = $branch_db->prepare("
     SELECT DATE(sr_dt) AS date, SUM(net_amt) AS total_return
     FROM t_sr_hdr
     WHERE DATE(sr_dt) BETWEEN ? AND ?
@@ -50,7 +67,7 @@ $stmt->bind_param("ss", $chart_from, $chart_to);
 $stmt->execute();
 $res_returns = $stmt->get_result();
 
-// Merge data for chart
+// 🧮 Merge chart data
 $data = [];
 while ($row = $res_sales->fetch_assoc()) {
     $data[$row['date']]['sales'] = $row['total_sale'];
@@ -59,10 +76,10 @@ while ($row = $res_returns->fetch_assoc()) {
     $data[$row['date']]['returns'] = $row['total_return'];
 }
 
-// Prepare chart labels
 $labels = [];
 $salesData = [];
 $returnsData = [];
+
 $start = new DateTime($chart_from);
 $end = new DateTime($chart_to);
 $end->modify('+1 day');
@@ -74,8 +91,8 @@ for ($d = $start; $d < $end; $d->modify('+1 day')) {
     $returnsData[] = $data[$date]['returns'] ?? 0;
 }
 
-// Summary totals
-$stmt = $branchCon->prepare("
+// 🧾 Summary
+$stmt = $branch_db->prepare("
     SELECT 
         (SELECT COALESCE(SUM(net_amt_after_disc), 0) FROM t_invoice_hdr WHERE DATE(invoice_dt) BETWEEN ? AND ?) AS total_sales,
         (SELECT COALESCE(SUM(net_amt), 0) FROM t_sr_hdr WHERE DATE(sr_dt) BETWEEN ? AND ?) AS total_returns,
@@ -90,9 +107,9 @@ $total_returns = $summary['total_returns'];
 $invoice_count = $summary['invoice_count'];
 $net_total = $total_sales - $total_returns;
 
-// Branch list for Admin
+// 🏢 Branch list
 $branches = [];
-if ($role_name === 'Admin') {
+if (strtolower($role_name) === 'admin') {
     $res = $con->query("SELECT branch_id FROM m_branch_sync_config");
     while ($row = $res->fetch_assoc()) {
         $branches[] = $row['branch_id'];
@@ -119,9 +136,9 @@ if ($role_name === 'Admin') {
         <form method="get" class="row g-3 mb-4">
             <div class="col-md-3">
                 <label>Branch</label>
-                <select name="branch" class="form-select">
+                <select name="branch" class="form-select" <?= strtolower($role_name) !== 'admin' ? 'disabled' : '' ?>>
                     <?php foreach ($branches as $b): ?>
-                        <option value="<?= $b ?>" <?= $b === $branch ? 'selected' : '' ?>><?= $b ?></option>
+                        <option value="<?= $b ?>" <?= $b === $selected_branch ? 'selected' : '' ?>><?= $b ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
