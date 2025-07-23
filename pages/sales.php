@@ -10,12 +10,40 @@ error_reporting(E_ALL);
 $from = $_GET['from'] ?? date('Y-m-d');
 $to = $_GET['to'] ?? date('Y-m-d');
 $branch = $_GET['branch'] ?? 'SHASHI-ND'; // ✅ Default Branch
+$role_name       = $_SESSION['role_name'];
+$session_branch  = $_SESSION['branch_id'] ?? '';
+$selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
 
 // Fetch invoices
 $invoices = [];
 $total = 0;
 
-if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE ltrim(rtrim(branch_id))=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
+// 🔌 Connect to branch DB dynamically
+$branch_db = null;
+$stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
+$stmt->bind_param("s", $selected_branch);
+$stmt->execute();
+$res = $stmt->get_result();
+
+if ($res->num_rows === 0) {
+    die("❌ Branch config not found for '$selected_branch'");
+}
+$config = $res->fetch_assoc();
+
+$branch_db = new mysqli(
+    $config['db_host'],
+    $config['db_user'],
+    $config['db_password'],
+    $config['db_name']
+);
+if ($branch_db->connect_error) {
+    die("❌ Branch DB connection failed: " . $branch_db->connect_error);
+}
+$branch_db->set_charset('utf8mb4');
+$branch_db->query("SET time_zone = '+05:30'");
+
+
+if ($stmt = $branch_db->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE ltrim(rtrim(branch_id))=? and invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
     $stmt->bind_param("sss", $branch, $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -26,8 +54,8 @@ if ($stmt = $con->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, ne
 }
 
 // Fetch total amount
-if ($stmt = $con->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE ltrim(rtrim(branch_id))=? and invoice_dt BETWEEN ? AND ?")) {
-    $stmt->bind_param("sss", $branch, $from, $to);
+if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ?")) {
+    $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     $totalRow = $result->fetch_assoc();
