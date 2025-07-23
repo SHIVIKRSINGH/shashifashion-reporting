@@ -1,10 +1,6 @@
 <?php
 require_once "../includes/config.php";
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-// session_start();
-
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -12,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = trim($_POST['password'] ?? '');
 
     $stmt = $con->prepare("
-        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.role_name AS role_name
+        SELECT u.user_id, u.username, u.role_id, u.branch_id, r.role_name
         FROM m_user u
         JOIN m_role r ON r.role_id = u.role_id
         WHERE u.username = ? AND u.password = ?
@@ -22,14 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $res = $stmt->get_result();
 
     if ($res->num_rows === 1) {
-        session_regenerate_id(true); // For security
-
+        session_regenerate_id(true);
         $user = $res->fetch_assoc();
         $_SESSION['user_id']    = $user['user_id'];
         $_SESSION['username']   = $user['username'];
         $_SESSION['role_id']    = $user['role_id'];
         $_SESSION['role_name']  = $user['role_name'];
-        $_SESSION['branch_id']  = $user['branch_id'];  // Always store branch_id if needed
+        $_SESSION['branch_id']  = $user['branch_id'];
 
         header("Location: dashboard.php");
         exit;
@@ -38,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
+<!-- Login HTML stays as-is from your original -->
+
 
 
 <!DOCTYPE html>

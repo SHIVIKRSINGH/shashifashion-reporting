@@ -1,21 +1,18 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-// if (session_status() === PHP_SESSION_NONE) session_start();
-
-// Redirect if not logged in
+// Check login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
-$role_id = $_SESSION['role_id'] ?? '';
+$user_id   = $_SESSION['user_id'];
+$role_id   = $_SESSION['role_id'] ?? '';
 $role_name = $_SESSION['role_name'] ?? '';
-
 $branch_id = $_SESSION['branch_id'] ?? 0;
 
-// Get menus based on role_id (NOT user_id)
+// Fetch menu items based on role
 $sql = "SELECT m.*
         FROM m_menu m
         JOIN m_permission p ON m.menu_id = p.menu_id
@@ -23,11 +20,11 @@ $sql = "SELECT m.*
         ORDER BY m.parent_id, m.sort_order";
 
 $stmt = $con->prepare($sql);
-$stmt->bind_param("i", $role_id);  // Note: role_id is a integer like 'Admin'=1, 'Manager'=2
+$stmt->bind_param("i", $role_id);
 $stmt->execute();
 $menus = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Build menu tree
+// Build menu hierarchy
 $tree = [];
 foreach ($menus as $m) {
     if (is_null($m['parent_id'])) {
@@ -111,6 +108,6 @@ foreach ($menus as $m) {
 
     <div class="content">
         <div class="topbar d-flex justify-content-between align-items-center">
-            <h5>Welcome, <?= htmlspecialchars($_SESSION['name'] ?? 'User') ?></h5>
+            <h5>Welcome, <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></h5>
             <a class="nav-link text-danger" href="logout.php">Logout</a>
         </div>
