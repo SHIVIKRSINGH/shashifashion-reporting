@@ -43,7 +43,32 @@ $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
 
-if ($stmt = $branch_db->prepare("SELECT ent_by,invoice_dt, bill_time,item_id, bar_code, qty, mrp,sale_price,disc_per FROM t_invoice_temp_det WHERE invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
+// 🔌 Connect to branch DB dynamically
+$branch_db = null;
+$stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
+$stmt->bind_param("s", $selected_branch);
+$stmt->execute();
+$res = $stmt->get_result();
+
+if ($res->num_rows === 0) {
+    die("❌ Branch config not found for '$selected_branch'");
+}
+$config = $res->fetch_assoc();
+
+$branch_db = new mysqli(
+    $config['db_host'],
+    $config['db_user'],
+    $config['db_password'],
+    $config['db_name']
+);
+if ($branch_db->connect_error) {
+    die("❌ Branch DB connection failed: " . $branch_db->connect_error);
+}
+$branch_db->set_charset('utf8mb4');
+$branch_db->query("SET time_zone = '+05:30'");
+
+
+if ($stmt = $branch_db->prepare("SELECT ent_by,date(invoice_dt), bill_time,item_id, bar_code, qty, mrp,sale_price,disc_per FROM t_invoice_temp_det WHERE invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
     $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
