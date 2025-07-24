@@ -14,8 +14,8 @@ $role_name       = $_SESSION['role_name'];
 $session_branch  = $_SESSION['branch_id'] ?? '';
 $selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
 
-// Fetch invoices
-$invoices = [];
+// Fetch items
+$items = [];
 $total = 0;
 
 // 🔌 Connect to branch DB dynamically
@@ -43,25 +43,25 @@ $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
 
-if ($stmt = $branch_db->prepare("SELECT invoice_no, cust_id, invoice_dt, bill_time, net_amt_after_disc FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
+if ($stmt = $branch_db->prepare("SELECT ent_by,invoice_dt, bill_time,item_id, bar_code, qty, mrp,sale_price,disc_per FROM t_invoice_temp_det WHERE invoice_dt BETWEEN ? AND ? ORDER BY invoice_no desc")) {
     $stmt->bind_param("ss", $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $invoices[] = $row;
+        $items[] = $row;
     }
     $stmt->close();
 }
 
-// Fetch total amount
-if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ?")) {
-    $stmt->bind_param("ss", $from, $to);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $totalRow = $result->fetch_assoc();
-    $total = $totalRow['total'] ?? 0;
-    $stmt->close();
-}
+// // Fetch total amount
+// if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ?")) {
+//     $stmt->bind_param("ss", $from, $to);
+//     $stmt->execute();
+//     $result = $stmt->get_result();
+//     $totalRow = $result->fetch_assoc();
+//     $total = $totalRow['total'] ?? 0;
+//     $stmt->close();
+// }
 ?>
 
 <!DOCTYPE html>
@@ -77,15 +77,15 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
 <body class="bg-light">
 
     <div class="container py-5">
-        <h2 class="mb-4">Invoice Report</h2>
+        <h2 class="mb-4">Bill Skiping Report</h2>
 
         <form method="get" class="row g-3 mb-4">
             <div class="col-sm-6 col-md-3">
-                <label for="branch">Branch</label>
-                <select name="branch" id="branch" class="form-select">
-                    <option value="SHASHI-ND" <?= $branch === 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
-                    <option value="SHIVI-ND" <?= $branch === 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
-                    <!-- Add more branches here -->
+                <label>Branch</label>
+                <select name="branch" class="form-select" <?= strtolower($role_name) !== 'admin' ? 'disabled' : '' ?>>
+                    <?php foreach ($branches as $b): ?>
+                        <option value="<?= $b ?>" <?= $b === $selected_branch ? 'selected' : '' ?>><?= $b ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-3">
@@ -104,29 +104,38 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
         <table id="invoiceTable" class="table table-striped table-bordered">
             <thead>
                 <tr>
-                    <th>Invoice No</th>
-                    <th>Customer</th>
+                    <th>Enterrd By</th>
                     <th>Invoice Date</th>
                     <th>Invoice Time</th>
-                    <th>Net Amount</th>
+                    <th>Item Id</th>
+                    <th>Barcode</th>
+                    <th>Qty</th>
+                    <th>MRP</th>
+                    <th>Sale Price</th>
+                    <th>Disc. Per(%)</th>
+
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($invoices as $row): ?>
+                <?php foreach ($items as $row): ?>
                     <tr>
-                        <td><?= htmlspecialchars($row['invoice_no']) ?></td>
-                        <td><?= htmlspecialchars($row['cust_id'] ?? '-') ?></td>
-                        <td><?= htmlspecialchars($row['invoice_dt']) ?></td>
+                        <td><?= htmlspecialchars($row['ent_by']) ?></td>
+                        <td><?= htmlspecialchars($row['invoice_dt'] ?? '-') ?></td>
                         <td><?= htmlspecialchars($row['bill_time']) ?></td>
-                        <td><?= number_format($row['net_amt_after_disc'], 2) ?></td>
+                        <td><?= htmlspecialchars($row['item_id']) ?></td>
+                        <td><?= htmlspecialchars($row['bar_code']) ?></td>
+                        <td><?= number_format($row['qty'], 2) ?></td>
+                        <td><?= number_format($row['mrp'], 2) ?></td>
+                        <td><?= number_format($row['sale_price'], 2) ?></td>
+                        <td><?= number_format($row['disc_per'], 2) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
 
-        <div class="mt-3">
+        <!-- <div class="mt-3">
             <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
-        </div>
+        </div> -->
     </div>
 
     <!-- Scripts -->
