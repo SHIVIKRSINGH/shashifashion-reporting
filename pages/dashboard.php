@@ -271,12 +271,20 @@ if (strtolower($role_name) === 'admin') {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result->fetch_assoc()) { ?>
+                            <?php while ($row = $result->fetch_assoc()) {
+                                $isTotalRow = $row['pay_mode_id'] === 'TOTAL';
+                            ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['pay_mode_id']); ?></td>
-                                    <td><?php echo number_format($row['total_sale'], 2); ?></td>
-                                    <td><?php echo number_format($row['total_return'], 2); ?></td>
-                                    <td style='color:greenyellow;'><?php echo number_format($row['net_total'], 2); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($row['pay_mode_id']); ?></strong></td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #d4edda; color: #155724; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['total_sale'], 2); ?>
+                                    </td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #f8d7da; color: #721c24; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['total_return'], 2); ?>
+                                    </td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #e6f4ea; color: #1e4620; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['net_total'], 2); ?>
+                                    </td>
                                 </tr>
                             <?php } ?>
                         </tbody>
