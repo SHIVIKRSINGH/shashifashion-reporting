@@ -276,7 +276,7 @@ if (strtolower($role_name) === 'admin') {
                                     <td><?php echo htmlspecialchars($row['pay_mode_id']); ?></td>
                                     <td><?php echo number_format($row['total_sale'], 2); ?></td>
                                     <td><?php echo number_format($row['total_return'], 2); ?></td>
-                                    <td><?php echo number_format($row['net_total'], 2); ?></td>
+                                    <td style='color:greenyellow;'><?php echo number_format($row['net_total'], 2); ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
