@@ -257,8 +257,10 @@ if (strtolower($role_name) === 'admin') {
         <!-- PAYMENT MODE WISE SALE SUMMARY UI -->
         <div class="row g-3 mb-4">
             <div class="p-3 bg-white shadow-sm rounded text-center">
-                <div class="col-md-3">
-                    <h5>PAYMENT MODE WISE SALE SUMMARY</h5>
+                <div class="row g-3 mb-4 justify-content-center">
+                    <div class="col-auto text-center">
+                        <h5 class="m-0">PAYMENT MODE WISE SALE SUMMARY</h5>
+                    </div>
                 </div>
                 <div class="table-responsive mt-3">
                     <table class="table table-bordered table-hover">
