@@ -107,6 +107,38 @@ $total_returns = $summary['total_returns'];
 $invoice_count = $summary['invoice_count'];
 $net_total = $total_sales - $total_returns;
 
+// PAYMENT MODE DATA
+
+$stmt = $branch_db->prepare("
+    SELECT 
+        CAST(a.pay_mode_id AS CHAR) AS pay_mode_id, 
+        SUM(a.pay_amt) AS total_pay_amt
+    FROM 
+        t_invoice_pay_det a
+    JOIN 
+        t_invoice_hdr b ON a.invoice_no = b.invoice_no
+    WHERE 
+        DATE(b.invoice_dt) BETWEEN ? AND ?
+    GROUP BY 
+        a.pay_mode_id
+
+    UNION ALL
+
+    SELECT 
+        'TOTAL' AS pay_mode_id, 
+        SUM(a.pay_amt) AS total_pay_amt
+    FROM 
+        t_invoice_pay_det a
+    JOIN 
+        t_invoice_hdr b ON a.invoice_no = b.invoice_no
+    WHERE 
+        DATE(b.invoice_dt) BETWEEN ? AND ?
+");
+
+$stmt->bind_param("ssss", $summary_from, $summary_to, $summary_from, $summary_to);
+$stmt->execute();
+$result = $stmt->get_result();
+
 // 🏢 Branch list
 $branches = [];
 if (strtolower($role_name) === 'admin') {
@@ -189,14 +221,29 @@ if (strtolower($role_name) === 'admin') {
         </div>
 
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="p-3 bg-white shadow-sm rounded text-center">
-
-                    <H3>PAYMENT MODE WISE SALE</H3>
-
+            <div class="p-3 bg-white shadow-sm rounded text-center">
+                <div class="col-md-3">
+                    <h5>PAYMENT MODE WISE SALE</h5>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Payment Mode</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($row = $result->fetch_assoc()) { ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['pay_mode_id']); ?></td>
+                                    <td><?php echo number_format($row['total_pay_amt'], 2); ?></td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
         </div>
     </div>
 
