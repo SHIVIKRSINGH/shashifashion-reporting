@@ -256,7 +256,7 @@ if (strtolower($role_name) === 'admin') {
         <div></div>
         <!-- PAYMENT MODE WISE SALE SUMMARY UI -->
         <!-- <div class="row g-3 mb-4"> -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm mt-4">
             <div class="p-3 bg-white shadow-sm rounded text-center">
                 <div class="row g-3 mb-4 justify-content-center">
                     <div class="col-auto text-center">
