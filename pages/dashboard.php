@@ -187,6 +187,17 @@ if (strtolower($role_name) === 'admin') {
                 <canvas id="chart"></canvas>
             </div>
         </div>
+
+        <div class="card shadow-sm">
+            <div class="col-md-3">
+                <div class="p-3 bg-white shadow-sm rounded text-center">
+
+                <H3>PAYMENT MODE WISE SALE</H3>
+
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <script>
