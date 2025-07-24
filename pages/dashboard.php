@@ -188,11 +188,11 @@ if (strtolower($role_name) === 'admin') {
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="p-3 bg-white shadow-sm rounded text-center">
 
-                <H3>PAYMENT MODE WISE SALE</H3>
+                    <H3>PAYMENT MODE WISE SALE</H3>
 
                 </div>
             </div>
