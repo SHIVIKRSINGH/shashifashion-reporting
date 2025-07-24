@@ -253,7 +253,7 @@ if (strtolower($role_name) === 'admin') {
                 <canvas id="chart"></canvas>
             </div>
         </div>
-
+        <div></div>
         <!-- PAYMENT MODE WISE SALE SUMMARY UI -->
         <!-- <div class="row g-3 mb-4"> -->
         <div class="card shadow-sm">
