@@ -111,31 +111,55 @@ $net_total = $total_sales - $total_returns;
 
 $stmt = $branch_db->prepare("
     SELECT 
-        CAST(a.pay_mode_id AS CHAR) AS pay_mode_id, 
-        SUM(a.pay_amt) AS total_pay_amt
+        CAST(sales.pay_mode_id AS CHAR) AS pay_mode_id,
+        IFNULL(SUM(sales.total_sale), 0) AS total_sale,
+        IFNULL(SUM(returns.total_return), 0) AS total_return,
+        IFNULL(SUM(sales.total_sale), 0) - IFNULL(SUM(returns.total_return), 0) AS net_total
     FROM 
-        t_invoice_pay_det a
-    JOIN 
-        t_invoice_hdr b ON a.invoice_no = b.invoice_no
-    WHERE 
-        DATE(b.invoice_dt) BETWEEN ? AND ?
-    GROUP BY 
-        a.pay_mode_id
+        (
+            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale
+            FROM t_invoice_pay_det a
+            JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
+            WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
+            GROUP BY a.pay_mode_id
+        ) sales
+    LEFT JOIN
+        (
+            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_return
+            FROM t_sr_pay_det a
+            JOIN t_sr_hdr b ON a.sr_no = b.sr_no
+            WHERE DATE(b.sr_dt) BETWEEN ? AND ?
+            GROUP BY a.pay_mode_id
+        ) returns
+    ON sales.pay_mode_id = returns.pay_mode_id
 
     UNION ALL
 
     SELECT 
-        'TOTAL' AS pay_mode_id, 
-        SUM(a.pay_amt) AS total_pay_amt
+        'TOTAL' AS pay_mode_id,
+        IFNULL(SUM(sales.total_sale), 0),
+        IFNULL(SUM(returns.total_return), 0),
+        IFNULL(SUM(sales.total_sale), 0) - IFNULL(SUM(returns.total_return), 0)
     FROM 
-        t_invoice_pay_det a
-    JOIN 
-        t_invoice_hdr b ON a.invoice_no = b.invoice_no
-    WHERE 
-        DATE(b.invoice_dt) BETWEEN ? AND ?
+        (
+            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale
+            FROM t_invoice_pay_det a
+            JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
+            WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
+            GROUP BY a.pay_mode_id
+        ) sales
+    LEFT JOIN
+        (
+            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_return
+            FROM t_sr_pay_det a
+            JOIN t_sr_hdr b ON a.sr_no = b.sr_no
+            WHERE DATE(b.sr_dt) BETWEEN ? AND ?
+            GROUP BY a.pay_mode_id
+        ) returns
+    ON sales.pay_mode_id = returns.pay_mode_id
 ");
 
-$stmt->bind_param("ssss", $summary_from, $summary_to, $summary_from, $summary_to);
+$stmt->bind_param("ssssssss", $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -223,21 +247,25 @@ if (strtolower($role_name) === 'admin') {
         <div class="row g-3 mb-4">
             <div class="p-3 bg-white shadow-sm rounded text-center">
                 <div class="col-md-3">
-                    <h5>PAYMENT MODE WISE SALE</h5>
+                    <h5>PAYMENT MODE WISE SALE SUMMARY</h5>
                 </div>
                 <div class="table-responsive mt-3">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
                                 <th>Payment Mode</th>
-                                <th>Total Amount</th>
+                                <th>Total Sale</th>
+                                <th>Total Sale Return</th>
+                                <th>Net Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php while ($row = $result->fetch_assoc()) { ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['pay_mode_id']); ?></td>
-                                    <td><?php echo number_format($row['total_pay_amt'], 2); ?></td>
+                                    <td><?php echo number_format($row['total_sale'], 2); ?></td>
+                                    <td><?php echo number_format($row['total_return'], 2); ?></td>
+                                    <td><?php echo number_format($row['net_total'], 2); ?></td>
                                 </tr>
                             <?php } ?>
                         </tbody>
