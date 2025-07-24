@@ -109,54 +109,64 @@ $net_total = $total_sales - $total_returns;
 
 // PAYMENT MODE DATA
 
+// Prepare and execute the updated payment mode-wise sale vs return query
 $stmt = $branch_db->prepare("
     SELECT 
-        CAST(sales.pay_mode_id AS CHAR) AS pay_mode_id,
-        IFNULL(SUM(sales.total_sale), 0) AS total_sale,
-        IFNULL(SUM(returns.total_return), 0) AS total_return,
-        IFNULL(SUM(sales.total_sale), 0) - IFNULL(SUM(returns.total_return), 0) AS net_total
-    FROM 
-        (
-            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale
-            FROM t_invoice_pay_det a
-            JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
-            WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
-            GROUP BY a.pay_mode_id
-        ) sales
-    LEFT JOIN
-        (
-            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_return
-            FROM t_sr_pay_det a
-            JOIN t_sr_hdr b ON a.sr_no = b.sr_no
-            WHERE DATE(b.sr_dt) BETWEEN ? AND ?
-            GROUP BY a.pay_mode_id
-        ) returns
-    ON sales.pay_mode_id = returns.pay_mode_id
+        CAST(x.pay_mode_id AS CHAR) AS pay_mode_id,
+        SUM(x.total_sale) AS total_sale,
+        SUM(x.total_return) AS total_return,
+        SUM(x.total_sale) - SUM(x.total_return) AS net_total
+    FROM (
+        SELECT 
+            a.pay_mode_id, 
+            SUM(a.pay_amt) AS total_sale, 
+            0 AS total_return
+        FROM t_invoice_pay_det a
+        JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
+        WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
+        GROUP BY a.pay_mode_id
+
+        UNION ALL
+
+        SELECT 
+            a.pay_mode_id, 
+            0 AS total_sale, 
+            SUM(a.pay_amt) AS total_return
+        FROM t_sr_pay_det a
+        JOIN t_sr_hdr b ON a.sr_no = b.sr_no
+        WHERE DATE(b.sr_dt) BETWEEN ? AND ?
+        GROUP BY a.pay_mode_id
+    ) x
+    GROUP BY x.pay_mode_id
 
     UNION ALL
 
     SELECT 
         'TOTAL' AS pay_mode_id,
-        IFNULL(SUM(sales.total_sale), 0),
-        IFNULL(SUM(returns.total_return), 0),
-        IFNULL(SUM(sales.total_sale), 0) - IFNULL(SUM(returns.total_return), 0)
-    FROM 
-        (
-            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale
-            FROM t_invoice_pay_det a
-            JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
-            WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
-            GROUP BY a.pay_mode_id
-        ) sales
-    LEFT JOIN
-        (
-            SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_return
-            FROM t_sr_pay_det a
-            JOIN t_sr_hdr b ON a.sr_no = b.sr_no
-            WHERE DATE(b.sr_dt) BETWEEN ? AND ?
-            GROUP BY a.pay_mode_id
-        ) returns
-    ON sales.pay_mode_id = returns.pay_mode_id
+        SUM(x.total_sale),
+        SUM(x.total_return),
+        SUM(x.total_sale) - SUM(x.total_return)
+    FROM (
+        SELECT 
+            a.pay_mode_id, 
+            SUM(a.pay_amt) AS total_sale, 
+            0 AS total_return
+        FROM t_invoice_pay_det a
+        JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
+        WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
+        GROUP BY a.pay_mode_id
+
+        UNION ALL
+
+        SELECT 
+            a.pay_mode_id, 
+            0 AS total_sale, 
+            SUM(a.pay_amt) AS total_return
+        FROM t_sr_pay_det a
+        JOIN t_sr_hdr b ON a.sr_no = b.sr_no
+        WHERE DATE(b.sr_dt) BETWEEN ? AND ?
+        GROUP BY a.pay_mode_id
+    ) x
 ");
 
 $stmt->bind_param("ssssssss", $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to);
@@ -244,6 +254,7 @@ if (strtolower($role_name) === 'admin') {
             </div>
         </div>
 
+        <!-- PAYMENT MODE WISE SALE SUMMARY UI -->
         <div class="row g-3 mb-4">
             <div class="p-3 bg-white shadow-sm rounded text-center">
                 <div class="col-md-3">
