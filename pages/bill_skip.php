@@ -77,6 +77,16 @@ if ($stmt = $branch_db->prepare("SELECT ent_by,date(invoice_dt), bill_time,item_
     }
     $stmt->close();
 }
+// 🏢 Branch list
+$branches = [];
+if (strtolower($role_name) === 'admin') {
+    $res = $con->query("SELECT branch_id FROM m_branch_sync_config");
+    while ($row = $res->fetch_assoc()) {
+        $branches[] = $row['branch_id'];
+    }
+} else {
+    $branches[] = $session_branch;
+}
 
 // // Fetch total amount
 // if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_invoice_hdr WHERE invoice_dt BETWEEN ? AND ?")) {
