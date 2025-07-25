@@ -150,6 +150,11 @@ $stmt->close();
             .no-print {
                 display: none;
             }
+
+            .table-responsive {
+                max-height: none !important;
+                overflow: visible !important;
+            }
         }
     </style>
 </head>
@@ -160,7 +165,7 @@ $stmt->close();
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">📦 Purchase Details (GRN)</h3>
             <div class="action-buttons no-print">
-                <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print</button>
+                <button class="btn btn-primary btn-sm" onclick="printFull()">🖨️ Print</button>
                 <button class="btn btn-danger btn-sm" onclick="downloadPDF()">📄 PDF</button>
                 <button class="btn btn-success btn-sm" onclick="exportToExcel()">📊 Excel</button>
             </div>
@@ -189,7 +194,7 @@ $stmt->close();
                 </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-responsive" id="table-wrapper">
                 <table class="table table-bordered table-hover table-striped" id="grn-table">
                     <thead class="table-dark text-center">
                         <tr>
@@ -241,7 +246,20 @@ $stmt->close();
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
+        function disableScrollWrapper() {
+            const wrapper = document.getElementById('table-wrapper');
+            wrapper.style.maxHeight = 'none';
+            wrapper.style.overflow = 'visible';
+        }
+
+        function enableScrollWrapper() {
+            const wrapper = document.getElementById('table-wrapper');
+            wrapper.style.maxHeight = '600px';
+            wrapper.style.overflow = 'auto';
+        }
+
         function downloadPDF() {
+            disableScrollWrapper();
             const element = document.getElementById('grn-section');
             html2pdf().set({
                 margin: 0.5,
@@ -258,15 +276,29 @@ $stmt->close();
                     format: 'a4',
                     orientation: 'portrait'
                 }
-            }).from(element).save();
+            }).from(element).save().then(() => {
+                enableScrollWrapper();
+            });
         }
 
         function exportToExcel() {
-            const table = document.getElementById("grn-table");
-            const wb = XLSX.utils.table_to_book(table, {
-                sheet: "GRN"
-            });
-            XLSX.writeFile(wb, 'GRN_<?= $receipt['receipt_id'] ?? "Receipt" ?>.xlsx');
+            disableScrollWrapper();
+            setTimeout(() => {
+                const table = document.getElementById("grn-table");
+                const wb = XLSX.utils.table_to_book(table, {
+                    sheet: "GRN"
+                });
+                XLSX.writeFile(wb, 'GRN_<?= $receipt['receipt_id'] ?? "Receipt" ?>.xlsx');
+                enableScrollWrapper();
+            }, 100);
+        }
+
+        function printFull() {
+            disableScrollWrapper();
+            setTimeout(() => {
+                window.print();
+                enableScrollWrapper();
+            }, 200);
         }
     </script>
 
