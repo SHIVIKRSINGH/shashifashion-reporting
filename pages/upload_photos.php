@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once "../includes/config.php";
 
 $receipt_id = $_GET['receipt_id'] ?? '';
@@ -22,14 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = basename($_FILES['photos']['name'][$i]);
             $target = $uploadDir . $name;
 
-            if (is_uploaded_file($tmpName)) {
+            if (file_exists($tmpName) && $_FILES['photos']['size'][$i] > 0) {
                 if (move_uploaded_file($tmpName, $target)) {
                     $uploadSuccess = true;
                 } else {
-                    $uploadError = "Failed to move file: $name";
+                    $uploadError .= "❌ Failed to move file: $name<br>";
                 }
             } else {
-                $uploadError = "Invalid uploaded file: $name";
+                $uploadError .= "❌ File not uploaded or empty: $name<br>";
             }
         }
     }
@@ -67,51 +67,64 @@ $baseURL = rtrim(dirname($_SERVER['PHP_SELF']), '/');
             .card-img-top {
                 max-height: 150px;
             }
+
+            .btn,
+            input.form-control {
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 
 <body class="bg-light">
 
-<div class="container py-4">
-    <h4 class="mb-3">📸 Upload Bill Photos for Receipt ID: <strong><?= htmlspecialchars($receipt_id) ?></strong></h4>
+    <div class="container py-4">
+        <h4 class="mb-3">📸 Upload Bill Photos for Receipt ID: <strong><?= htmlspecialchars($receipt_id) ?></strong></h4>
 
-    <?php if ($uploadSuccess): ?>
-        <div class="alert alert-success">✅ Photos uploaded successfully.</div>
-    <?php elseif ($uploadError): ?>
-        <div class="alert alert-danger">❌ <?= $uploadError ?></div>
-    <?php endif; ?>
+        <?php if ($uploadSuccess): ?>
+            <div class="alert alert-success">✅ Photos uploaded successfully.</div>
+        <?php elseif ($uploadError): ?>
+            <div class="alert alert-danger"><?= $uploadError ?></div>
+        <?php endif; ?>
 
-    <form method="POST" enctype="multipart/form-data" class="mb-4">
-        <div class="mb-3">
-            <label class="form-label">Choose or Capture Photos</label>
-            <input type="file" name="photos[]" accept="image/*" multiple capture="environment" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-success me-2">📤 Upload Photos</button>
-        <a href="purchase.php" class="btn btn-secondary">🔙 Back</a>
-    </form>
+        <form method="POST" enctype="multipart/form-data" class="mb-4">
+            <div class="mb-3">
+                <label class="form-label">Choose or Capture Photos</label>
+                <input
+                    type="file"
+                    name="photos[]"
+                    accept="image/*"
+                    multiple
+                    capture="environment"
+                    class="form-control"
+                    required>
+            </div>
+            <button type="submit" class="btn btn-success me-2">📤 Upload Photos</button>
+            <a href="purchase.php" class="btn btn-secondary">🔙 Back</a>
+        </form>
 
-    <?php if (!empty($existingPhotos)): ?>
-        <div class="row">
-            <?php foreach ($existingPhotos as $photo): ?>
-                <div class="col-6 col-sm-4 col-md-3 mb-3">
-                    <div class="card">
-                        <img src="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" class="card-img-top" alt="Photo">
-                        <div class="card-body text-center p-2">
-                            <form method="post" action="delete_photo.php" onsubmit="return confirm('Delete this photo?')">
-                                <input type="hidden" name="photo" value="<?= htmlspecialchars($photo) ?>">
-                                <input type="hidden" name="receipt_id" value="<?= htmlspecialchars($receipt_id) ?>">
-                                <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
-                            </form>
+        <?php if (!empty($existingPhotos)): ?>
+            <div class="row">
+                <?php foreach ($existingPhotos as $photo): ?>
+                    <div class="col-6 col-sm-4 col-md-3 mb-3">
+                        <div class="card">
+                            <img src="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" class="card-img-top" alt="Photo">
+                            <div class="card-body text-center p-2">
+                                <form method="post" action="delete_photo.php" onsubmit="return confirm('Delete this photo?')">
+                                    <input type="hidden" name="photo" value="<?= htmlspecialchars($photo) ?>">
+                                    <input type="hidden" name="receipt_id" value="<?= htmlspecialchars($receipt_id) ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php else: ?>
-        <p class="text-muted">No photos uploaded yet.</p>
-    <?php endif; ?>
-</div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <p class="text-muted">No photos uploaded yet.</p>
+        <?php endif; ?>
+    </div>
 
 </body>
+
 </html>
