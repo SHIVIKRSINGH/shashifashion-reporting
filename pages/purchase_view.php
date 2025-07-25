@@ -159,37 +159,25 @@ $stmt->close();
     </style>
 </head>
 
-<body class="bg-light">
+<body class="bg-white">
 
     <div class="container my-5" id="grn-section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0">📦 Purchase Details (GRN)</h3>
-            <div class="action-buttons no-print">
-                <button class="btn btn-primary btn-sm" onclick="printFull()">🖨️ Print</button>
-                <button class="btn btn-danger btn-sm" onclick="downloadPDF()">📄 PDF</button>
-                <button class="btn btn-success btn-sm" onclick="exportToExcel()">📊 Excel</button>
-            </div>
-        </div>
-
         <?php if (!$receipt): ?>
             <div class="alert alert-warning">No GRN found for this receipt ID.</div>
         <?php else: ?>
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Receipt #<?= htmlspecialchars($receipt['receipt_id']) ?></h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>🧾 Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
-                                <strong>📅 Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
-                                <strong>📄 Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>👤 Entered By:</strong> <?= $receipt['ent_by'] ?><br>
-                                <strong>💰 Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
-                                <strong>💵 Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
-                            </p>
-                        </div>
+            <div class="mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
+                            <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
+                            <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
+                            <strong>Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
+                            <strong>Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -241,10 +229,8 @@ $stmt->close();
         <?php endif; ?>
     </div>
 
-    <!-- JS Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <script>
         function disableScrollWrapper() {
             const wrapper = document.getElementById('table-wrapper');
@@ -276,9 +262,7 @@ $stmt->close();
                     format: 'a4',
                     orientation: 'portrait'
                 }
-            }).from(element).save().then(() => {
-                enableScrollWrapper();
-            });
+            }).from(element).save().then(() => enableScrollWrapper());
         }
 
         function exportToExcel() {
@@ -301,7 +285,6 @@ $stmt->close();
             }, 200);
         }
     </script>
-
 </body>
 
 </html>
