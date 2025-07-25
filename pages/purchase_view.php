@@ -132,73 +132,143 @@ $stmt->close();
 <head>
     <title>GRN View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .action-buttons {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 10;
+            padding: 10px 0;
+        }
+
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
 </head>
 
 <body class="bg-light">
 
-    <div class="container my-5">
-        <h3>Purchase Details (GRN)</h3>
+    <div class="container my-5" id="grn-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">📦 Purchase Details (GRN)</h3>
+            <div class="action-buttons no-print">
+                <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print</button>
+                <button class="btn btn-danger btn-sm" onclick="downloadPDF()">📄 PDF</button>
+                <button class="btn btn-success btn-sm" onclick="exportToExcel()">📊 Excel</button>
+            </div>
+        </div>
 
         <?php if (!$receipt): ?>
             <div class="alert alert-warning">No GRN found for this receipt ID.</div>
         <?php else: ?>
-            <div class="card mb-4">
+            <div class="card shadow-sm mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Receipt #<?= htmlspecialchars($receipt['receipt_id']) ?></h5>
-                    <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>                        
-                        <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
-                        <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)<br>
-                        <strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
-                        <strong>Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
-                        <strong>Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
-                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>🧾 Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
+                                <strong>📅 Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
+                                <strong>📄 Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>👤 Entered By:</strong> <?= $receipt['ent_by'] ?><br>
+                                <strong>💰 Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
+                                <strong>💵 Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <table class="table table-bordered">
-                <thead class="table-secondary">
-                    <tr>
-                        <th>Sl</th>
-                        <th>Item Name</th>
-                        <th>HSN</th>
-                        <th>Qty</th>
-                        <th>Pur Rate</th>
-                        <th>Disc%</th>
-                        <th>GST%</th>
-                        <th>Net Rate</th>
-                        <th>Net Amt</th>
-                        <th>MRP</th>
-                        <th>Sales Price</th>
-                        <th>Cess%</th>
-                        <th>MARGIN ON MRP</th>
-                        <th>MARGIN ON SP</th>
-                        <th>MARK DOWN MARGIN</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($items as $row): ?>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped" id="grn-table">
+                    <thead class="table-dark text-center">
                         <tr>
-                            <td><?= $row['sl_no'] ?></td>
-                            <td><?= htmlspecialchars($row['item_name']) ?></td>
-                            <td><?= $row['hsn_code'] ?></td>
-                            <td><?= $row['qty'] ?></td>
-                            <td><?= $row['pur_rate'] ?></td>
-                            <td><?= $row['disc_per'] ?></td>
-                            <td><?= $row['vat_per'] ?></td>
-                            <td><?= $row['net_rate'] ?></td>
-                            <td><?= $row['d_net_amt'] ?></td>
-                            <td><?= $row['mrp'] ?></td>
-                            <td><?= $row['sales_price'] ?></td>
-                            <td><?= $row['cess_perc'] ?></td>
-                            <td><?= $row['margin'] ?></td>
-                            <td><?= $row['margin_on_sp'] ?></td>
-                            <td><?= $row['mark_down_margin'] ?></td>
+                            <th>Sl</th>
+                            <th>Item Name</th>
+                            <th>HSN</th>
+                            <th>Qty</th>
+                            <th>Pur Rate</th>
+                            <th>Disc%</th>
+                            <th>GST%</th>
+                            <th>Net Rate</th>
+                            <th>Net Amt</th>
+                            <th>MRP</th>
+                            <th>Sales Price</th>
+                            <th>Cess%</th>
+                            <th>Margin on MRP</th>
+                            <th>Margin on SP</th>
+                            <th>Mark Down Margin</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($items as $row): ?>
+                            <tr class="text-center">
+                                <td><?= $row['sl_no'] ?></td>
+                                <td class="text-start"><?= htmlspecialchars($row['item_name']) ?></td>
+                                <td><?= $row['hsn_code'] ?></td>
+                                <td><?= $row['qty'] ?></td>
+                                <td><?= $row['pur_rate'] ?></td>
+                                <td><?= $row['disc_per'] ?></td>
+                                <td><?= $row['vat_per'] ?></td>
+                                <td><?= $row['net_rate'] ?></td>
+                                <td><?= $row['d_net_amt'] ?></td>
+                                <td><?= $row['mrp'] ?></td>
+                                <td><?= $row['sales_price'] ?></td>
+                                <td><?= $row['cess_perc'] ?></td>
+                                <td><?= $row['margin'] ?>%</td>
+                                <td><?= $row['margin_on_sp'] ?>%</td>
+                                <td><?= $row['mark_down_margin'] ?>%</td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         <?php endif; ?>
     </div>
+
+    <!-- JS Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        function downloadPDF() {
+            const element = document.getElementById('grn-section');
+            html2pdf().set({
+                margin: 0.5,
+                filename: 'GRN_<?= $receipt['receipt_id'] ?? "Receipt" ?>.pdf',
+                image: {
+                    type: 'jpeg',
+                    quality: 0.98
+                },
+                html2canvas: {
+                    scale: 2
+                },
+                jsPDF: {
+                    unit: 'in',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
+            }).from(element).save();
+        }
+
+        function exportToExcel() {
+            const table = document.getElementById("grn-table");
+            const wb = XLSX.utils.table_to_book(table, {
+                sheet: "GRN"
+            });
+            XLSX.writeFile(wb, 'GRN_<?= $receipt['receipt_id'] ?? "Receipt" ?>.xlsx');
+        }
+    </script>
 
 </body>
 
