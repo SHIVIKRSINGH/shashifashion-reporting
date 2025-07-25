@@ -114,7 +114,9 @@ $baseURL = rtrim(dirname($_SERVER['PHP_SELF']), '/');
                 <?php foreach ($existingPhotos as $photo): ?>
                     <div class="col-6 col-sm-4 col-md-3 mb-3">
                         <div class="card">
-                            <img src="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" class="card-img-top" alt="Photo">
+                            <a href="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" target="_blank">
+                                <img src="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" class="card-img-top" alt="Photo">
+                            </a>
                             <div class="card-body text-center p-2">
                                 <form method="post" action="delete_photo.php" onsubmit="return confirm('Delete this photo?')">
                                     <input type="hidden" name="photo" value="<?= htmlspecialchars($photo) ?>">
