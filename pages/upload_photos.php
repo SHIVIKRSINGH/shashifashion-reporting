@@ -1,4 +1,4 @@
-<?php
+<?php 
 require_once "../includes/config.php";
 
 $receipt_id = $_GET['receipt_id'] ?? '';
@@ -9,6 +9,9 @@ if (!$receipt_id || !$branch_id) {
     exit;
 }
 
+$uploadSuccess = false;
+$uploadError = '';
+
 // Handle file upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_FILES['photos']['name'][0])) {
@@ -18,10 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($_FILES['photos']['tmp_name'] as $i => $tmpName) {
             $name = basename($_FILES['photos']['name'][$i]);
             $target = $uploadDir . $name;
-            move_uploaded_file($tmpName, $target);
-        }
 
-        echo "<div class='alert alert-success text-center'>📸 Photos uploaded successfully.</div>";
+            if (is_uploaded_file($tmpName)) {
+                if (move_uploaded_file($tmpName, $target)) {
+                    $uploadSuccess = true;
+                } else {
+                    $uploadError = "Failed to move file: $name";
+                }
+            } else {
+                $uploadError = "Invalid uploaded file: $name";
+            }
+        }
     }
 }
 
@@ -31,6 +41,8 @@ $photoDir = __DIR__ . "/uploads/$receipt_id/";
 if (is_dir($photoDir)) {
     $existingPhotos = array_diff(scandir($photoDir), ['.', '..']);
 }
+
+$baseURL = rtrim(dirname($_SERVER['PHP_SELF']), '/');
 ?>
 
 <!DOCTYPE html>
@@ -38,74 +50,68 @@ if (is_dir($photoDir)) {
 
 <head>
     <meta charset="UTF-8">
-    <title>Upload Purchase Bill Images</title>
+    <title>Upload Bill Images</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f9f9f9;
-        }
-
-        .img-preview {
-            object-fit: cover;
-            height: 180px;
+        .card-img-top {
+            max-height: 200px;
+            object-fit: contain;
         }
 
         @media (max-width: 576px) {
-            .img-preview {
-                height: 140px;
+            h4 {
+                font-size: 1.2rem;
+            }
+
+            .card-img-top {
+                max-height: 150px;
             }
         }
     </style>
 </head>
 
-<body>
+<body class="bg-light">
 
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="mb-0">🧾 Upload Bill Photos</h4>
-            <a href="purchase.php" class="btn btn-sm btn-outline-secondary">⬅ Back</a>
+<div class="container py-4">
+    <h4 class="mb-3">📸 Upload Bill Photos for Receipt ID: <strong><?= htmlspecialchars($receipt_id) ?></strong></h4>
+
+    <?php if ($uploadSuccess): ?>
+        <div class="alert alert-success">✅ Photos uploaded successfully.</div>
+    <?php elseif ($uploadError): ?>
+        <div class="alert alert-danger">❌ <?= $uploadError ?></div>
+    <?php endif; ?>
+
+    <form method="POST" enctype="multipart/form-data" class="mb-4">
+        <div class="mb-3">
+            <label class="form-label">Choose or Capture Photos</label>
+            <input type="file" name="photos[]" accept="image/*" multiple capture="environment" class="form-control" required>
         </div>
-        <p class="text-muted mb-4">Receipt ID: <strong><?= htmlspecialchars($receipt_id) ?></strong></p>
+        <button type="submit" class="btn btn-success me-2">📤 Upload Photos</button>
+        <a href="purchase.php" class="btn btn-secondary">🔙 Back</a>
+    </form>
 
-        <form method="POST" enctype="multipart/form-data" class="mb-4">
-            <div class="mb-3">
-                <label for="photoUpload" class="form-label">📷 Choose or Capture Photos</label>
-                <input
-                    type="file"
-                    name="photos[]"
-                    id="photoUpload"
-                    class="form-control"
-                    accept="image/*"
-                    capture="environment"
-                    multiple
-                    required>
-            </div>
-            <div class="d-grid gap-2 d-md-block">
-                <button type="submit" class="btn btn-success">📤 Upload Photos</button>
-            </div>
-        </form>
-
-        <?php if (!empty($existingPhotos)): ?>
-            <div class="row">
-                <?php foreach ($existingPhotos as $photo): ?>
-                    <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
-                        <div class="card shadow-sm h-100">
-                            <img src="uploads/<?= $receipt_id ?>/<?= $photo ?>" class="card-img-top img-preview" alt="Photo">
-                            <div class="card-body text-center">
-                                <form method="POST" action="delete_photo.php" onsubmit="return confirm('Delete this photo?')">
-                                    <input type="hidden" name="photo" value="<?= $photo ?>">
-                                    <input type="hidden" name="receipt_id" value="<?= $receipt_id ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
-                                </form>
-                            </div>
+    <?php if (!empty($existingPhotos)): ?>
+        <div class="row">
+            <?php foreach ($existingPhotos as $photo): ?>
+                <div class="col-6 col-sm-4 col-md-3 mb-3">
+                    <div class="card">
+                        <img src="<?= $baseURL ?>/uploads/<?= $receipt_id ?>/<?= urlencode($photo) ?>" class="card-img-top" alt="Photo">
+                        <div class="card-body text-center p-2">
+                            <form method="post" action="delete_photo.php" onsubmit="return confirm('Delete this photo?')">
+                                <input type="hidden" name="photo" value="<?= htmlspecialchars($photo) ?>">
+                                <input type="hidden" name="receipt_id" value="<?= htmlspecialchars($receipt_id) ?>">
+                                <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+                            </form>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <p class="text-muted">No photos uploaded yet.</p>
+    <?php endif; ?>
+</div>
 
 </body>
-
 </html>
