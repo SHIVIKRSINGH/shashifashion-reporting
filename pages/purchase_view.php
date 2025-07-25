@@ -149,8 +149,8 @@ $stmt->close();
                         <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
                         <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)<br>
                         <strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
-                        <strong>Gross Amount:</strong> ₹<?= number_format($receipt['gross_amt'], 2) ?><br>
-                        <strong>Net Amount:</strong> ₹<?= number_format($receipt['net_amt'], 2) ?>
+                        <strong>Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
+                        <strong>Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
                     </p>
                 </div>
             </div>
