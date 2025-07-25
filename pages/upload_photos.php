@@ -19,17 +19,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
         foreach ($_FILES['photos']['tmp_name'] as $i => $tmpName) {
-            $name = basename($_FILES['photos']['name'][$i]);
-            $target = $uploadDir . $name;
+            $originalName = $_FILES['photos']['name'][$i];
+            $error = $_FILES['photos']['error'][$i];
+            $size = $_FILES['photos']['size'][$i];
 
-            if (file_exists($tmpName) && $_FILES['photos']['size'][$i] > 0) {
+            // Sanitize & rename file
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            $safeName = "photo_" . time() . "_$i." . $ext;
+            $target = $uploadDir . $safeName;
+
+            if ($error === UPLOAD_ERR_OK && $size > 0 && is_uploaded_file($tmpName)) {
                 if (move_uploaded_file($tmpName, $target)) {
                     $uploadSuccess = true;
                 } else {
-                    $uploadError .= "❌ Failed to move file: $name<br>";
+                    $uploadError .= "❌ Failed to move file: $originalName<br>";
                 }
             } else {
-                $uploadError .= "❌ File not uploaded or empty: $name<br>";
+                $uploadError .= "❌ Upload error for: $originalName (Error code: $error)<br>";
             }
         }
     }
