@@ -145,8 +145,7 @@ $stmt->close();
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="card-title">Receipt #<?= htmlspecialchars($receipt['receipt_id']) ?></h5>
-                    <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
-                        <strong>Address:</strong> <?= htmlspecialchars($receipt['address_1']) ?>, <?= htmlspecialchars($receipt['address_2']) ?>, <?= htmlspecialchars($receipt['address_3']) ?><br>
+                    <p><strong>Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>                        
                         <strong>Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
                         <strong>Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)<br>
                         <strong>Entered By:</strong> <?= $receipt['ent_by'] ?><br>
