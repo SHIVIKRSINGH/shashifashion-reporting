@@ -74,7 +74,7 @@ $baseURL = rtrim(dirname($_SERVER['PHP_SELF']), '/');
                 max-height: 150px;
             }
 
-            .btn,
+            .btn, 
             input.form-control {
                 font-size: 0.9rem;
             }
