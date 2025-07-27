@@ -53,10 +53,10 @@ if ($branch_db->connect_error) {
 $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
-$query = "
-    SET @FromDt = ?;
-    SET @ToDate = ?;
+$from = $branch_db->real_escape_string($from);
+$to   = $branch_db->real_escape_string($to);
 
+$query = "
     CREATE TEMPORARY TABLE tmpSaleIt AS
     SELECT 
         A.item_id,
@@ -65,7 +65,7 @@ $query = "
         SUM(IFNULL(A.qty,0) * IFNULL(A.pur_rate,0)) AS pur_amt
     FROM t_invoice_det A
     JOIN t_invoice_hdr B ON A.invoice_no = B.invoice_no
-    WHERE B.invoice_dt BETWEEN STR_TO_DATE(@FromDt, '%Y-%m-%d') AND STR_TO_DATE(@ToDate, '%Y-%m-%d')
+    WHERE B.invoice_dt BETWEEN STR_TO_DATE('$from', '%Y-%m-%d') AND STR_TO_DATE('$to', '%Y-%m-%d')
     GROUP BY A.item_id;
 
     CREATE TEMPORARY TABLE tmpSaleRetIt AS
@@ -76,7 +76,7 @@ $query = "
         SUM(IFNULL(A.qty,0) * IFNULL(A.pur_rate,0)) AS pur_ret_amt
     FROM t_sr_det A
     JOIN t_sr_hdr B ON A.sr_no = B.sr_no
-    WHERE B.sr_dt BETWEEN STR_TO_DATE(@FromDt, '%Y-%m-%d') AND STR_TO_DATE(@ToDate, '%Y-%m-%d')
+    WHERE B.sr_dt BETWEEN STR_TO_DATE('$from', '%Y-%m-%d') AND STR_TO_DATE('$to', '%Y-%m-%d')
     GROUP BY A.item_id;
 
     SELECT 
@@ -109,7 +109,7 @@ $query = "
     DROP TEMPORARY TABLE IF EXISTS tmpSaleRetIt;
 ";
 
-if ($branch_db->multi_query(str_replace(['@FromDt', '@ToDate'], ["'$from'", "'$to'"], $query))) {
+if ($branch_db->multi_query($query)) {
     do {
         if ($result = $branch_db->store_result()) {
             while ($row = $result->fetch_assoc()) {
