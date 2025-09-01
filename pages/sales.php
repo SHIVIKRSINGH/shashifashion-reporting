@@ -109,6 +109,7 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
                     <th>Invoice Date</th>
                     <th>Invoice Time</th>
                     <th>Net Amount</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -119,6 +120,11 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
                         <td><?= htmlspecialchars($row['invoice_dt']) ?></td>
                         <td><?= htmlspecialchars($row['bill_time']) ?></td>
                         <td><?= number_format($row['net_amt_after_disc'], 2) ?></td>
+                        <td>
+                            <a href="invoice_items_view.php?invoice_no=<?= urlencode($row['invoice_no']) ?>" class="btn btn-sm btn-outline-primary" title="View Invoice Details">
+                                🔍 View
+                            </a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
