@@ -2,65 +2,93 @@
 require_once "../includes/config.php";
 
 $error = '';
+$login_type = $_POST['login_type'] ?? 'admin'; // default admin
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
-    $password = md5(trim($_POST['password'])); // ✅ MD5 for security
+    $password = md5(trim($_POST['password'])); // MD5 hash
 
-    $stmt = $con->prepare("
-        SELECT u.user_id, u.username, u.password, u.role_id, u.branch_id, r.role_name
-        FROM m_user u
-        JOIN m_role r ON r.role_id = u.role_id
-        WHERE u.username = ? AND u.password = ? AND u.is_active = 1
-        LIMIT 1
-    ");
-    $stmt->bind_param("ss", $username, $password);
-    $stmt->execute();
-    $res = $stmt->get_result();
+    if ($login_type === 'employee') {
+        // ✅ Employee Login (from employee_master)
+        $stmt = $con->prepare("
+            SELECT emp_id, emp_name, username, password, branch_id, role, is_active
+            FROM employee_master
+            WHERE username = ? AND password = ? AND is_active = 1
+            LIMIT 1
+        ");
+        $stmt->bind_param("ss", $username, $password);
+        $stmt->execute();
+        $res = $stmt->get_result();
 
-    if ($res->num_rows === 1) {
-        $user = $res->fetch_assoc();
-        session_regenerate_id(true);
+        if ($res->num_rows === 1) {
+            $emp = $res->fetch_assoc();
+            session_regenerate_id(true);
 
-        // ✅ Set session variables
-        $_SESSION['user_id']    = $user['user_id'];
-        $_SESSION['username']   = $user['username'];
-        $_SESSION['role_id']    = $user['role_id'];
-        $_SESSION['role_name']  = $user['role_name'];
-        $_SESSION['branch_id']  = $user['branch_id'];
+            $_SESSION['emp_id'] = $emp['emp_id'];
+            $_SESSION['emp_name'] = $emp['emp_name'];
+            $_SESSION['branch_id'] = $emp['branch_id'];
+            $_SESSION['role_name'] = $emp['role']; // 'Employee' or 'Admin'
 
-        // ✅ If manager: Load their branch DB config now
-        if (!empty($user['branch_id']) && strtolower($user['role_name']) === 'manager') {
-            $bstmt = $con->prepare("
-                SELECT db_host, db_user, db_password, db_name
-                FROM m_branch_sync_config
-                WHERE branch_id = ?
-            ");
-            $bstmt->bind_param("s", $user['branch_id']);
-            $bstmt->execute();
-            $branchRes = $bstmt->get_result();
-
-            if ($branchRes->num_rows === 1) {
-                $branchDb = $branchRes->fetch_assoc();
-                $_SESSION['branch_db'] = [
-                    'host'     => $branchDb['db_host'],
-                    'user'     => $branchDb['db_user'],
-                    'password' => $branchDb['db_password'],
-                    'name'     => $branchDb['db_name']
-                ];
-            }
+            // Redirect to attendance dashboard
+            header("Location: attendance_punch.php");
+            exit;
+        } else {
+            $error = "❌ Invalid employee credentials.";
         }
-
-        // ✅ Redirect to dashboard
-        header("Location: dashboard.php");
-        exit;
     } else {
-        $error = "❌ Invalid username or password.";
+        // ✅ Admin / Manager Login (existing)
+        $stmt = $con->prepare("
+            SELECT u.user_id, u.username, u.password, u.role_id, u.branch_id, r.role_name
+            FROM m_user u
+            JOIN m_role r ON r.role_id = u.role_id
+            WHERE u.username = ? AND u.password = ? AND u.is_active = 1
+            LIMIT 1
+        ");
+        $stmt->bind_param("ss", $username, $password);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        if ($res->num_rows === 1) {
+            $user = $res->fetch_assoc();
+            session_regenerate_id(true);
+
+            $_SESSION['user_id'] = $user['user_id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role_id'] = $user['role_id'];
+            $_SESSION['role_name'] = $user['role_name'];
+            $_SESSION['branch_id'] = $user['branch_id'];
+
+            // Manager: Load their branch DB config
+            if (!empty($user['branch_id']) && strtolower($user['role_name']) === 'manager') {
+                $bstmt = $con->prepare("
+                    SELECT db_host, db_user, db_password, db_name
+                    FROM m_branch_sync_config
+                    WHERE branch_id = ?
+                ");
+                $bstmt->bind_param("s", $user['branch_id']);
+                $bstmt->execute();
+                $branchRes = $bstmt->get_result();
+
+                if ($branchRes->num_rows === 1) {
+                    $branchDb = $branchRes->fetch_assoc();
+                    $_SESSION['branch_db'] = [
+                        'host'     => $branchDb['db_host'],
+                        'user'     => $branchDb['db_user'],
+                        'password' => $branchDb['db_password'],
+                        'name'     => $branchDb['db_name']
+                    ];
+                }
+            }
+
+            header("Location: dashboard.php");
+            exit;
+        } else {
+            $error = "❌ Invalid username or password.";
+        }
     }
 }
 ?>
 
-<!-- ✅ Login Page HTML -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -71,12 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body,
-        html {
-            height: 100%;
+        body {
             font-family: 'Quicksand', sans-serif;
             background: #f9f6f1;
-            margin: 0;
         }
 
         .container {
@@ -103,26 +128,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             height: 170px;
             background: linear-gradient(135deg, #da5b79, #a164dd, #f2c94c);
             clip-path: ellipse(140% 100% at 50% 0%);
-            z-index: 1;
         }
 
         .login-card h2 {
             margin-top: 120px;
             font-weight: 600;
             color: #333;
-            position: relative;
-            z-index: 2;
             text-align: left;
+            position: relative;
         }
 
         .form-group {
             margin-bottom: 20px;
-            z-index: 2;
-            position: relative;
         }
 
-        input[type="text"],
-        input[type="password"] {
+        input {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid #ddd;
@@ -152,23 +172,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #8a4ec0;
         }
 
-        .links {
+        .toggle-links {
             display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
+            justify-content: center;
+            margin-top: 25px;
             font-size: 14px;
         }
 
-        .links a {
-            text-decoration: none;
+        .toggle-links button {
+            background: none;
+            border: none;
             color: #a164dd;
-            font-weight: 500;
-        }
-
-        .alert {
-            margin-bottom: 20px;
-            z-index: 2;
-            position: relative;
+            font-weight: 600;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -184,6 +200,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="POST" autocomplete="off">
+                <input type="hidden" name="login_type" id="login_type" value="admin">
+
                 <div class="form-group">
                     <label>Username</label>
                     <input type="text" name="username" required placeholder="Enter username">
@@ -198,13 +216,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <button type="submit" class="signin-btn">&#10148;</button>
                 </div>
 
-                <div class="links">
-                    <a href="#">Sign up</a>
-                    <a href="#">Forgot Password?</a>
+                <div class="toggle-links">
+                    <button type="button" onclick="switchLogin('admin')">Admin/Manager</button> |
+                    <button type="button" onclick="switchLogin('employee')">Employee</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <script>
+        function switchLogin(type) {
+            document.getElementById('login_type').value = type;
+            alert('Switched to ' + type + ' login.');
+        }
+    </script>
 </body>
 
 </html>

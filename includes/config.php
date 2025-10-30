@@ -115,3 +115,36 @@ if (isset($_SESSION['branch_db'])) {
         }
     }
 }
+
+// ---------------------------------------------------
+// ✅ ATTENDANCE CONFIG SECTION (GeoLocation Only)
+// ---------------------------------------------------
+define('ATTENDANCE_ENABLED', true);
+define('DEFAULT_ALLOWED_RADIUS', 0.2); // 0.2 km = 200 meters
+
+/**
+ * Calculate distance (in km) between two GPS points
+ */
+function calculate_distance_km($lat1, $lon1, $lat2, $lon2)
+{
+    $earthRadius = 6371;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+        cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+        sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return $earthRadius * $c;
+}
+
+/**
+ * Check if employee location is within allowed radius
+ */
+function is_within_allowed_radius($emp_lat, $emp_lon, $office_lat, $office_lon, $allowed_radius_km = DEFAULT_ALLOWED_RADIUS)
+{
+    if (empty($emp_lat) || empty($emp_lon) || empty($office_lat) || empty($office_lon)) {
+        return false;
+    }
+    $distance = calculate_distance_km($emp_lat, $emp_lon, $office_lat, $office_lon);
+    return ($distance <= $allowed_radius_km);
+}
