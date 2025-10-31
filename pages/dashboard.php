@@ -107,57 +107,9 @@ $total_returns = $summary['total_returns'];
 $invoice_count = $summary['invoice_count'];
 $net_total = $total_sales - $total_returns;
 
-// 🔹 Hourly Sales
-$stmt = $branch_db->prepare("
-    SELECT 
-        HOUR(bill_time) AS hour,
-        COALESCE(SUM(net_amt_after_disc), 0) AS total_sale
-    FROM t_invoice_hdr
-    WHERE DATE(invoice_dt) BETWEEN ? AND ?
-    GROUP BY HOUR(bill_time)
-    ORDER BY HOUR(bill_time)
-");
-$stmt->bind_param("ss", $chart_from, $chart_to);
-$stmt->execute();
-$res_hourly = $stmt->get_result();
-
-$hour_labels = [];
-$hour_sales = [];
-for ($h = 0; $h < 24; $h++) {
-    $hour_labels[] = sprintf("%02d:00", $h);
-    $hour_sales[$h] = 0;
-}
-while ($row = $res_hourly->fetch_assoc()) {
-    $hour = (int)$row['hour'];
-    $hour_sales[$hour] = $row['total_sale'];
-}
-$hour_sales_data = array_values($hour_sales);
-
-// 🔸 Category-wise (Group-wise) Sales
-$stmt = $branch_db->prepare("
-    SELECT 
-        g.group_desc,
-        COALESCE(SUM(d.net_amt),0) AS total_sale
-    FROM t_invoice_det d
-    JOIN m_item_hdr i ON d.item_id = i.item_id
-    JOIN m_group g ON i.group_id = g.group_id
-    JOIN t_invoice_hdr h ON d.invoice_no = h.invoice_no
-    WHERE DATE(h.invoice_dt) BETWEEN ? AND ?
-    GROUP BY g.group_id, g.group_desc
-    ORDER BY total_sale DESC
-");
-$stmt->bind_param("ss", $summary_from, $summary_to);
-$stmt->execute();
-$res_cats = $stmt->get_result();
-
-$cat_labels = [];
-$cat_sales = [];
-while ($row = $res_cats->fetch_assoc()) {
-    $cat_labels[] = $row['group_desc'];
-    $cat_sales[] = $row['total_sale'];
-}
-
 // PAYMENT MODE DATA
+
+// Prepare and execute the updated payment mode-wise sale vs return query
 $stmt = $branch_db->prepare("
     SELECT 
         CAST(x.pay_mode_id AS CHAR) AS pay_mode_id,
@@ -165,38 +117,58 @@ $stmt = $branch_db->prepare("
         SUM(x.total_return) AS total_return,
         SUM(x.total_sale) - SUM(x.total_return) AS net_total
     FROM (
-        SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale, 0 AS total_return
+        SELECT 
+            a.pay_mode_id, 
+            SUM(a.pay_amt) AS total_sale, 
+            0 AS total_return
         FROM t_invoice_pay_det a
         JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
         WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
         GROUP BY a.pay_mode_id
+
         UNION ALL
-        SELECT a.pay_mode_id, 0 AS total_sale, SUM(a.pay_amt) AS total_return
+
+        SELECT 
+            a.pay_mode_id, 
+            0 AS total_sale, 
+            SUM(a.pay_amt) AS total_return
         FROM t_sr_pay_det a
         JOIN t_sr_hdr b ON a.sr_no = b.sr_no
         WHERE DATE(b.sr_dt) BETWEEN ? AND ?
         GROUP BY a.pay_mode_id
     ) x
     GROUP BY x.pay_mode_id
+
     UNION ALL
-    SELECT 'TOTAL' AS pay_mode_id,
+
+    SELECT 
+        'TOTAL' AS pay_mode_id,
         SUM(x.total_sale),
         SUM(x.total_return),
         SUM(x.total_sale) - SUM(x.total_return)
     FROM (
-        SELECT a.pay_mode_id, SUM(a.pay_amt) AS total_sale, 0 AS total_return
+        SELECT 
+            a.pay_mode_id, 
+            SUM(a.pay_amt) AS total_sale, 
+            0 AS total_return
         FROM t_invoice_pay_det a
         JOIN t_invoice_hdr b ON a.invoice_no = b.invoice_no
         WHERE DATE(b.invoice_dt) BETWEEN ? AND ?
         GROUP BY a.pay_mode_id
+
         UNION ALL
-        SELECT a.pay_mode_id, 0 AS total_sale, SUM(a.pay_amt) AS total_return
+
+        SELECT 
+            a.pay_mode_id, 
+            0 AS total_sale, 
+            SUM(a.pay_amt) AS total_return
         FROM t_sr_pay_det a
         JOIN t_sr_hdr b ON a.sr_no = b.sr_no
         WHERE DATE(b.sr_dt) BETWEEN ? AND ?
         GROUP BY a.pay_mode_id
     ) x
 ");
+
 $stmt->bind_param("ssssssss", $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to, $summary_from, $summary_to);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -249,7 +221,6 @@ if (strtolower($role_name) === 'admin') {
             </div>
         </form>
 
-        <!-- Summary Cards -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="p-3 bg-white shadow-sm rounded text-center">
@@ -277,33 +248,21 @@ if (strtolower($role_name) === 'admin') {
             </div>
         </div>
 
-        <!-- Daily Sales Chart -->
         <div class="card shadow-sm">
             <div class="card-body">
                 <canvas id="chart"></canvas>
             </div>
         </div>
-
-        <!-- Hourly Sales Chart -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-body">
-                <h5 class="text-center mb-3">Hourly Sales (<?= htmlspecialchars($chart_from) ?><?= ($chart_to && $chart_to !== $chart_from) ? " to " . htmlspecialchars($chart_to) : '' ?>)</h5>
-                <canvas id="hourly_chart"></canvas>
-            </div>
-        </div>
-
-        <!-- Category-wise Sales Chart -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-body">
-                <h5 class="text-center mb-3">Top Categories by Sales (<?= htmlspecialchars($summary_from) ?><?= ($summary_to && $summary_to !== $summary_from) ? " to " . htmlspecialchars($summary_to) : '' ?>)</h5>
-                <canvas id="cat_chart"></canvas>
-            </div>
-        </div>
-
-        <!-- Payment Mode Summary -->
+        <div></div>
+        <!-- PAYMENT MODE WISE SALE SUMMARY UI -->
+        <!-- <div class="row g-3 mb-4"> -->
         <div class="card shadow-sm mt-4">
             <div class="p-3 bg-white shadow-sm rounded text-center">
-                <h5 class="m-0 mb-3">PAYMENT MODE WISE SALE SUMMARY</h5>
+                <div class="row g-3 mb-4 justify-content-center">
+                    <div class="col-auto text-center">
+                        <h5 class="m-0">PAYMENT MODE WISE SALE SUMMARY</h5>
+                    </div>
+                </div>
                 <div class="table-responsive mt-3">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
@@ -316,12 +275,19 @@ if (strtolower($role_name) === 'admin') {
                         </thead>
                         <tbody>
                             <?php while ($row = $result->fetch_assoc()) {
-                                $isTotalRow = $row['pay_mode_id'] === 'TOTAL'; ?>
+                                $isTotalRow = $row['pay_mode_id'] === 'TOTAL';
+                            ?>
                                 <tr>
-                                    <td><strong><?= htmlspecialchars($row['pay_mode_id']); ?></strong></td>
-                                    <td style="<?= $isTotalRow ? 'background-color: #d4edda; color: #155724; font-weight: bold;' : ''; ?>"><?= number_format($row['total_sale'], 2); ?></td>
-                                    <td style="<?= $isTotalRow ? 'background-color: #f8d7da; color: #721c24; font-weight: bold;' : ''; ?>"><?= number_format($row['total_return'], 2); ?></td>
-                                    <td style="<?= $isTotalRow ? 'background-color: #e6f4ea; color: #1e4620; font-weight: bold;' : ''; ?>"><?= number_format($row['net_total'], 2); ?></td>
+                                    <td><strong><?php echo htmlspecialchars($row['pay_mode_id']); ?></strong></td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #d4edda; color: #155724; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['total_sale'], 2); ?>
+                                    </td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #f8d7da; color: #721c24; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['total_return'], 2); ?>
+                                    </td>
+                                    <td style="<?php echo $isTotalRow ? 'background-color: #e6f4ea; color: #1e4620; font-weight: bold;' : ''; ?>">
+                                        <?php echo number_format($row['net_total'], 2); ?>
+                                    </td>
                                 </tr>
                             <?php } ?>
                         </tbody>
@@ -332,7 +298,6 @@ if (strtolower($role_name) === 'admin') {
     </div>
 
     <script>
-        // ===== Daily Sales Chart =====
         const ctx = document.getElementById('chart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
@@ -364,94 +329,6 @@ if (strtolower($role_name) === 'admin') {
                         beginAtZero: true,
                         ticks: {
                             callback: value => '₹ ' + value
-                        }
-                    }
-                }
-            }
-        });
-
-        // ===== Hourly Sales Chart =====
-        const ctx2 = document.getElementById('hourly_chart').getContext('2d');
-        new Chart(ctx2, {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($hour_labels) ?>,
-                datasets: [{
-                    label: 'Hourly Sales (₹)',
-                    data: <?= json_encode($hour_sales_data) ?>,
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => '₹ ' + ctx.formattedValue
-                        }
-                    },
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Hour of the Day'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Sales (₹)'
-                        }
-                    }
-                }
-            }
-        });
-
-        // ===== Category-wise Sales Chart =====
-        const ctx3 = document.getElementById('cat_chart').getContext('2d');
-        new Chart(ctx3, {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($cat_labels) ?>,
-                datasets: [{
-                    label: 'Category-wise Sales (₹)',
-                    data: <?= json_encode($cat_sales) ?>,
-                    backgroundColor: 'rgba(153, 102, 255, 0.8)'
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => '₹ ' + ctx.formattedValue
-                        }
-                    },
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Sales (₹)'
-                        },
-                        ticks: {
-                            callback: value => '₹ ' + value
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Category'
                         }
                     }
                 }
