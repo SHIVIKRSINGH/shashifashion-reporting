@@ -1,5 +1,5 @@
 <?php
-require_once "../includes/config.php"; // Main MySQLi config
+require_once "../includes/config.php";
 include "../includes/header.php";
 
 ini_set('display_errors', 1);
@@ -18,7 +18,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manuf_search') {
         exit;
     }
 
-    // Get branch DB details
     $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
     $stmt->bind_param("s", $branch);
     $stmt->execute();
@@ -73,7 +72,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manuf_search') {
    NORMAL PAGE LOGIC
 ===================================================== */
 
-// Defaults
 $from   = $_GET['from'] ?? date('Y-m-d');
 $to     = $_GET['to'] ?? date('Y-m-d');
 $manuf  = $_GET['manuf'] ?? '';
@@ -81,7 +79,6 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND';
 
 $rows = [];
 
-/* 🔌 Branch DB Connection */
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
 $stmt->bind_param("s", $branch);
 $stmt->execute();
@@ -113,52 +110,49 @@ $branch_db->query("SET time_zone = '+05:30'");
 if (!empty($manuf)) {
 
     $sql = "
-    SELECT 
-        I.item_id,
-        I.item_desc,
+SELECT 
+    I.item_id,
+    I.item_desc,
+    IFNULL(P.pur_qty,0) - IFNULL(PR.pur_ret_qty,0) AS pur_qty,
+    IFNULL(P.pur_amt,0) - IFNULL(PR.pur_ret_amt,0) AS pur_amt,
+    IFNULL(S.sal_qty,0) - IFNULL(SR.sal_ret_qty,0) AS sal_qty,
+    IFNULL(S.sal_amt,0) - IFNULL(SR.sal_ret_amt,0) AS sal_amt
+FROM M_ITEM_HDR I
 
-        IFNULL(P.pur_qty,0) - IFNULL(PR.pur_ret_qty,0) AS pur_qty,
-        IFNULL(P.pur_amt,0) - IFNULL(PR.pur_ret_amt,0) AS pur_amt,
+LEFT JOIN (
+    SELECT B.item_id, SUM(B.qty) pur_qty, SUM(B.net_amt) pur_amt
+    FROM t_receipt_hdr A
+    JOIN t_receipt_det B ON A.receipt_id = B.receipt_id
+    WHERE A.receipt_date BETWEEN ? AND ?
+    GROUP BY B.item_id
+) P ON P.item_id = I.item_id
 
-        IFNULL(S.sal_qty,0) - IFNULL(SR.sal_ret_qty,0) AS sal_qty,
-        IFNULL(S.sal_amt,0) - IFNULL(SR.sal_ret_amt,0) AS sal_amt
+LEFT JOIN (
+    SELECT item_id, SUM(qty) pur_ret_qty, SUM(net_amt) pur_ret_amt
+    FROM t_pur_ret_det
+    WHERE ret_dt BETWEEN ? AND ?
+    GROUP BY item_id
+) PR ON PR.item_id = I.item_id
 
-    FROM M_ITEM_HDR I
+LEFT JOIN (
+    SELECT item_id, SUM(qty) sal_qty, SUM(net_amt) sal_amt
+    FROM t_invoice_det
+    WHERE invoice_dt BETWEEN ? AND ?
+    GROUP BY item_id
+) S ON S.item_id = I.item_id
 
-    LEFT JOIN (
-        SELECT B.item_id, SUM(B.qty) pur_qty, SUM(B.net_amt) pur_amt
-        FROM t_receipt_hdr A
-        JOIN t_receipt_det B ON A.receipt_id = B.receipt_id
-        WHERE A.receipt_date BETWEEN ? AND ?
-        GROUP BY B.item_id
-    ) P ON P.item_id = I.item_id
+LEFT JOIN (
+    SELECT B.item_id, SUM(B.qty) sal_ret_qty, SUM(B.net_amt) sal_ret_amt
+    FROM t_sr_hdr A
+    JOIN t_sr_det B ON A.sr_no = B.sr_no
+    WHERE A.sr_dt BETWEEN ? AND ?
+    GROUP BY B.item_id
+) SR ON SR.item_id = I.item_id
 
-    LEFT JOIN (
-        SELECT item_id, SUM(qty) pur_ret_qty, SUM(net_amt) pur_ret_amt
-        FROM t_pur_ret_det
-        WHERE ret_dt BETWEEN ? AND ?
-        GROUP BY item_id
-    ) PR ON PR.item_id = I.item_id
-
-    LEFT JOIN (
-        SELECT item_id, SUM(qty) sal_qty, SUM(net_amt) sal_amt
-        FROM t_invoice_det
-        WHERE invoice_dt BETWEEN ? AND ?
-        GROUP BY item_id
-    ) S ON S.item_id = I.item_id
-
-    LEFT JOIN (
-        SELECT B.item_id, SUM(B.qty) sal_ret_qty, SUM(B.net_amt) sal_ret_amt
-        FROM t_sr_hdr A
-        JOIN t_sr_det B ON A.sr_no = B.sr_no
-        WHERE A.sr_dt BETWEEN ? AND ?
-        GROUP BY B.item_id
-    ) SR ON SR.item_id = I.item_id
-
-    WHERE I.MANUF_ID = ?
-    HAVING pur_qty <> 0 OR sal_qty <> 0
-    ORDER BY I.item_desc
-    ";
+WHERE I.MANUF_ID = ?
+HAVING pur_qty <> 0 OR sal_qty <> 0
+ORDER BY I.item_desc
+";
 
     $stmt = $branch_db->prepare($sql);
     $stmt->bind_param(
@@ -195,12 +189,11 @@ if (!empty($manuf)) {
 </head>
 
 <body class="bg-light">
-
     <div class="container py-4">
 
         <h3 class="mb-4 text-uppercase">Manufacture Wise Sale Purchase Report</h3>
 
-        <form method="get" class="row g-3 mb-4">
+        <form method="get" class="row g-3 mb-4" id="searchForm">
 
             <div class="col-md-3">
                 <label>Branch</label>
@@ -212,7 +205,7 @@ if (!empty($manuf)) {
 
             <div class="col-md-3">
                 <label>Manufacturer</label>
-                <input type="text" id="manuf_search" class="form-control" placeholder="Search manufacturer">
+                <input type="text" id="manuf_search" class="form-control" placeholder="Type & select manufacturer">
                 <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
             </div>
 
@@ -266,6 +259,8 @@ if (!empty($manuf)) {
     <script>
         $(function() {
 
+            let selectedManuf = false;
+
             $('#manuf_search').autocomplete({
                 minLength: 2,
                 source: function(request, response) {
@@ -278,7 +273,37 @@ if (!empty($manuf)) {
                 select: function(event, ui) {
                     $('#manuf_search').val(ui.item.label);
                     $('#manuf').val(ui.item.value);
+                    selectedManuf = true;
                     return false;
+                },
+                change: function() {
+                    if (!selectedManuf) {
+                        $('#manuf').val('');
+                    }
+                }
+            });
+
+            /* 🔥 CRITICAL FIX: Force selection on submit */
+            $('#searchForm').on('submit', function(e) {
+
+                if ($('#manuf').val() === '' && $('#manuf_search').val() !== '') {
+
+                    e.preventDefault();
+
+                    $.getJSON('r_manuf_sale_pur_reg.php', {
+                        ajax: 'manuf_search',
+                        term: $('#manuf_search').val(),
+                        branch: $('#branch').val()
+                    }, function(data) {
+
+                        if (data.length === 1) {
+                            $('#manuf').val(data[0].value);
+                            $('#manuf_search').val(data[0].label);
+                            $('#searchForm')[0].submit();
+                        } else {
+                            alert('Please select manufacturer from list');
+                        }
+                    });
                 }
             });
 
