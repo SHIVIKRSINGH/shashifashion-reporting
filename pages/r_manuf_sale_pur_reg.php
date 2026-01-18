@@ -210,7 +210,7 @@ if ($res->num_rows === 0) {
             });
 
             $('#reportTable').DataTable({
-                "pageLength": 50,
+                "pageLength": 10,
                 "order": [
                     [1, "asc"]
                 ],
