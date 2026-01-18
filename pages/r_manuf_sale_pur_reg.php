@@ -47,7 +47,7 @@ $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
 /* =====================================================
-   REPORT QUERY
+   REPORT QUERY (DATETIME-SAFE)
 ===================================================== */
 if (!empty($manuf)) {
 
@@ -68,21 +68,21 @@ LEFT JOIN (
     SELECT B.item_id, SUM(B.qty) pur_qty, SUM(B.net_amt) pur_amt
     FROM t_receipt_hdr A
     JOIN t_receipt_det B ON A.receipt_id = B.receipt_id
-    WHERE A.receipt_date BETWEEN ? AND ?
+    WHERE DATE(A.receipt_date) BETWEEN ? AND ?
     GROUP BY B.item_id
 ) P ON P.item_id = I.item_id
 
 LEFT JOIN (
     SELECT item_id, SUM(qty) pur_ret_qty, SUM(net_amt) pur_ret_amt
     FROM t_pur_ret_det
-    WHERE ret_dt BETWEEN ? AND ?
+    WHERE DATE(ret_dt) BETWEEN ? AND ?
     GROUP BY item_id
 ) PR ON PR.item_id = I.item_id
 
 LEFT JOIN (
     SELECT item_id, SUM(qty) sal_qty, SUM(net_amt) sal_amt
     FROM t_invoice_det
-    WHERE invoice_dt BETWEEN ? AND ?
+    WHERE DATE(invoice_dt) BETWEEN ? AND ?
     GROUP BY item_id
 ) S ON S.item_id = I.item_id
 
@@ -90,18 +90,18 @@ LEFT JOIN (
     SELECT B.item_id, SUM(B.qty) sal_ret_qty, SUM(B.net_amt) sal_ret_amt
     FROM t_sr_hdr A
     JOIN t_sr_det B ON A.sr_no = B.sr_no
-    WHERE A.sr_dt BETWEEN ? AND ?
+    WHERE DATE(A.sr_dt) BETWEEN ? AND ?
     GROUP BY B.item_id
 ) SR ON SR.item_id = I.item_id
 
-WHERE I.MANUF_ID = ?
+WHERE I.manuf_id = ?
 HAVING pur_qty <> 0 OR sal_qty <> 0
 ORDER BY I.item_desc
 ";
 
     $stmt = $branch_db->prepare($sql);
     $stmt->bind_param(
-        "sssssssss",
+        "sssssssss",   // ✅ EXACTLY 9 placeholders
         $from,
         $to,
         $from,
