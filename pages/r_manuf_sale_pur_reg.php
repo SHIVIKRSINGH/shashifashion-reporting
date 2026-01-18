@@ -62,7 +62,7 @@ SELECT
     IFNULL(S.sal_qty,0) - IFNULL(SR.sal_ret_qty,0) AS sal_qty,
     IFNULL(S.sal_amt,0) - IFNULL(SR.sal_ret_amt,0) AS sal_amt
 
-FROM M_ITEM_HDR I
+FROM m_item_hdr I
 
 LEFT JOIN (
     SELECT B.item_id, SUM(B.qty) pur_qty, SUM(B.net_amt) pur_amt
