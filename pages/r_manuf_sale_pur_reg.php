@@ -101,7 +101,7 @@ ORDER BY I.item_desc
 
     $stmt = $branch_db->prepare($sql);
     $stmt->bind_param(
-        "ssssssssss",
+        "sssssssss",
         $from,
         $to,
         $from,
