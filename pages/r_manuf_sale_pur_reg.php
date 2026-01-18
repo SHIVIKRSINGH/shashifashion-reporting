@@ -94,7 +94,7 @@ LEFT JOIN (
     GROUP BY B.item_id
 ) SR ON SR.item_id = I.item_id
 
-WHERE I.manuf_id = ?
+WHERE TRIM(I.manuf_id) = ?
 AND (
     P.item_id IS NOT NULL
  OR S.item_id IS NOT NULL
