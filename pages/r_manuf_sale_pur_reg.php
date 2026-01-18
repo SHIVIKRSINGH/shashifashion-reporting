@@ -6,18 +6,18 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 /* =====================================================
-   INPUTS
+    INPUTS (Cleaned of extra spaces)
 ===================================================== */
 $from   = $_GET['from'] ?? date('Y-m-d');
 $to     = $_GET['to'] ?? date('Y-m-d');
-$manuf  = $_GET['manuf'] ?? '';
+$manuf  = isset($_GET['manuf']) ? trim($_GET['manuf']) : '';
 $branch = $_GET['branch'] ?? 'SHASHI-ND';
 
 $rows = [];
 $error_msg = "";
 
 /* =====================================================
-   GET BRANCH DB CONFIG
+    GET BRANCH DB CONFIG
 ===================================================== */
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
 $stmt->bind_param("s", $branch);
@@ -30,7 +30,7 @@ if ($res->num_rows === 0) {
     $config = $res->fetch_assoc();
 
     /* =====================================================
-       CONNECT TO BRANCH DB
+        CONNECT TO BRANCH DB
     ===================================================== */
     $branch_db = new mysqli($config['db_host'], $config['db_user'], $config['db_password'], $config['db_name']);
 
@@ -41,7 +41,7 @@ if ($res->num_rows === 0) {
         $branch_db->query("SET time_zone = '+05:30'");
 
         /* =====================================================
-           REPORT QUERY
+            REPORT QUERY (Using TRIM in WHERE clause)
         ===================================================== */
         if (!empty($manuf)) {
             $sql = "
@@ -79,7 +79,7 @@ if ($res->num_rows === 0) {
                 WHERE DATE(A.sr_dt) BETWEEN ? AND ?
                 GROUP BY B.item_id
             ) SR ON SR.item_id = I.item_id
-            WHERE I.manuf_id = ?
+            WHERE TRIM(I.manuf_id) = ?
             AND (P.item_id IS NOT NULL OR S.item_id IS NOT NULL OR PR.item_id IS NOT NULL OR SR.item_id IS NOT NULL)
             ORDER BY I.item_desc";
 
@@ -116,7 +116,7 @@ if ($res->num_rows === 0) {
             <div class="alert alert-danger"><?= $error_msg ?></div>
         <?php endif; ?>
 
-        <form method="get" class="card card-body shadow-sm mb-4">
+        <form method="get" id="filterForm" class="card card-body shadow-sm mb-4">
             <div class="row g-3">
                 <div class="col-md-2">
                     <label class="form-label">Branch</label>
@@ -127,7 +127,7 @@ if ($res->num_rows === 0) {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Manufacturer</label>
-                    <input type="text" id="manuf_search" class="form-control" placeholder="Type to search..." value="">
+                    <input type="text" id="manuf_search" class="form-control" placeholder="Type to search..." autocomplete="off">
                     <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
                 </div>
                 <div class="col-md-2">
@@ -145,7 +145,7 @@ if ($res->num_rows === 0) {
         </form>
 
         <?php if (!empty($manuf) && empty($rows)): ?>
-            <div class="alert alert-info">No transactions found for this manufacturer in the selected dates.</div>
+            <div class="alert alert-info">No transactions found for Manufacturer ID: <b><?= htmlspecialchars($manuf) ?></b> in the selected dates.</div>
         <?php endif; ?>
 
         <div class="table-responsive bg-white p-3 shadow-sm rounded">
@@ -163,8 +163,8 @@ if ($res->num_rows === 0) {
                 <tbody>
                     <?php foreach ($rows as $r): ?>
                         <tr>
-                            <td><?= $r['item_id'] ?></td>
-                            <td><?= $r['item_desc'] ?></td>
+                            <td><?= htmlspecialchars($r['item_id']) ?></td>
+                            <td><?= htmlspecialchars($r['item_desc']) ?></td>
                             <td class="text-end"><?= number_format($r['pur_qty'], 2) ?></td>
                             <td class="text-end"><?= number_format($r['pur_amt'], 2) ?></td>
                             <td class="text-end"><?= number_format($r['sal_qty'], 2) ?></td>
@@ -198,6 +198,13 @@ if ($res->num_rows === 0) {
                     return false;
                 }
             });
+
+            // Keep Manufacturer ID visible for debugging if needed
+            // If we have a manuf ID but no label, this helps track it
+            var currentManuf = $("#manuf").val();
+            if (currentManuf) {
+                $("#manuf_search").attr("placeholder", "Manufacturer: " + currentManuf);
+            }
 
             // Initialize DataTable
             $('#reportTable').DataTable({
