@@ -1,33 +1,96 @@
 <?php
-require_once "../includes/config.php"; // MySQLi config
+require_once "../includes/config.php"; // Main MySQLi config
 include "../includes/header.php";
 
-// Error reporting
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+/* =====================================================
+   AJAX: Manufacturer Search (Branch-wise)
+===================================================== */
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'manuf_search') {
+
+    $term   = $_GET['term'] ?? '';
+    $branch = $_GET['branch'] ?? '';
+
+    if ($branch === '' || $term === '') {
+        echo json_encode([]);
+        exit;
+    }
+
+    // Get branch DB details
+    $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
+    $stmt->bind_param("s", $branch);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if ($res->num_rows === 0) {
+        echo json_encode([]);
+        exit;
+    }
+
+    $cfg = $res->fetch_assoc();
+
+    $db = new mysqli(
+        $cfg['db_host'],
+        $cfg['db_user'],
+        $cfg['db_password'],
+        $cfg['db_name']
+    );
+
+    if ($db->connect_error) {
+        echo json_encode([]);
+        exit;
+    }
+
+    $sql = "
+        SELECT manuf_id, manuf_name
+        FROM m_manuf
+        WHERE manuf_name LIKE CONCAT('%', ?, '%')
+           OR manuf_id LIKE CONCAT('%', ?, '%')
+        ORDER BY manuf_name
+        LIMIT 20
+    ";
+
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param("ss", $term, $term);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = [
+            'label' => $row['manuf_name'] . ' (' . $row['manuf_id'] . ')',
+            'value' => $row['manuf_id']
+        ];
+    }
+
+    echo json_encode($data);
+    exit;
+}
+
+/* =====================================================
+   NORMAL PAGE LOGIC
+===================================================== */
+
 // Defaults
-$from        = $_GET['from'] ?? date('Y-m-d');
-$to          = $_GET['to'] ?? date('Y-m-d');
-$manuf       = $_GET['manuf'] ?? '';
-$branch      = $_GET['branch'] ?? 'SHASHI-ND';
+$from   = $_GET['from'] ?? date('Y-m-d');
+$to     = $_GET['to'] ?? date('Y-m-d');
+$manuf  = $_GET['manuf'] ?? '';
+$branch = $_GET['branch'] ?? 'SHASHI-ND';
 
-$role_name       = $_SESSION['role_name'];
-$session_branch  = $_SESSION['branch_id'] ?? '';
-$selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
-
-// Results
 $rows = [];
 
-/* 🔌 Connect to branch DB dynamically */
+/* 🔌 Branch DB Connection */
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
-$stmt->bind_param("s", $selected_branch);
+$stmt->bind_param("s", $branch);
 $stmt->execute();
 $res = $stmt->get_result();
 
 if ($res->num_rows === 0) {
-    die("❌ Branch config not found for '$selected_branch'");
+    die("❌ Branch config not found");
 }
+
 $config = $res->fetch_assoc();
 
 $branch_db = new mysqli(
@@ -36,13 +99,17 @@ $branch_db = new mysqli(
     $config['db_password'],
     $config['db_name']
 );
+
 if ($branch_db->connect_error) {
-    die("❌ Branch DB connection failed: " . $branch_db->connect_error);
+    die("❌ Branch DB connection failed");
 }
+
 $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
-/* 🔍 Fetch Report Data */
+/* =====================================================
+   REPORT QUERY
+===================================================== */
 if (!empty($manuf)) {
 
     $sql = "
@@ -59,9 +126,7 @@ if (!empty($manuf)) {
     FROM M_ITEM_HDR I
 
     LEFT JOIN (
-        SELECT B.item_id,
-               SUM(B.qty) AS pur_qty,
-               SUM(B.net_amt) AS pur_amt
+        SELECT B.item_id, SUM(B.qty) pur_qty, SUM(B.net_amt) pur_amt
         FROM t_receipt_hdr A
         JOIN t_receipt_det B ON A.receipt_id = B.receipt_id
         WHERE A.receipt_date BETWEEN ? AND ?
@@ -69,27 +134,21 @@ if (!empty($manuf)) {
     ) P ON P.item_id = I.item_id
 
     LEFT JOIN (
-        SELECT item_id,
-               SUM(qty) AS pur_ret_qty,
-               SUM(net_amt) AS pur_ret_amt
+        SELECT item_id, SUM(qty) pur_ret_qty, SUM(net_amt) pur_ret_amt
         FROM t_pur_ret_det
         WHERE ret_dt BETWEEN ? AND ?
         GROUP BY item_id
     ) PR ON PR.item_id = I.item_id
 
     LEFT JOIN (
-        SELECT item_id,
-               SUM(qty) AS sal_qty,
-               SUM(net_amt) AS sal_amt
+        SELECT item_id, SUM(qty) sal_qty, SUM(net_amt) sal_amt
         FROM t_invoice_det
         WHERE invoice_dt BETWEEN ? AND ?
         GROUP BY item_id
     ) S ON S.item_id = I.item_id
 
     LEFT JOIN (
-        SELECT B.item_id,
-               SUM(B.qty) AS sal_ret_qty,
-               SUM(B.net_amt) AS sal_ret_amt
+        SELECT B.item_id, SUM(B.qty) sal_ret_qty, SUM(B.net_amt) sal_ret_amt
         FROM t_sr_hdr A
         JOIN t_sr_det B ON A.sr_no = B.sr_no
         WHERE A.sr_dt BETWEEN ? AND ?
@@ -117,10 +176,9 @@ if (!empty($manuf)) {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    while ($r = $result->fetch_assoc()) {
-        $rows[] = $r;
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
     }
-    $stmt->close();
 }
 ?>
 
@@ -132,60 +190,57 @@ if (!empty($manuf)) {
     <title>MANUFACTURE WISE SALE PURCHASE REPORT</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-light">
 
-    <div class="container py-5">
+    <div class="container py-4">
 
-        <h2 class="mb-4 text-uppercase">Manufacture Wise Sale Purchase Report</h2>
+        <h3 class="mb-4 text-uppercase">Manufacture Wise Sale Purchase Report</h3>
 
-        <!-- 🔍 Search Form -->
         <form method="get" class="row g-3 mb-4">
 
             <div class="col-md-3">
-                <label class="form-label">Branch</label>
-                <select name="branch" class="form-select">
-                    <option value="SHASHI-ND" <?= $branch === 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
-                    <option value="SHIVI-ND" <?= $branch === 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
+                <label>Branch</label>
+                <select name="branch" id="branch" class="form-select">
+                    <option value="SHASHI-ND" <?= $branch == 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
+                    <option value="SHIVI-ND" <?= $branch == 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
                 </select>
             </div>
 
             <div class="col-md-3">
-                <label class="form-label">Manufacturer</label>
-                <input type="text"
-                    name="manuf"
-                    class="form-control"
-                    placeholder="Enter Manufacturer Code"
-                    value="<?= htmlspecialchars($manuf) ?>">
+                <label>Manufacturer</label>
+                <input type="text" id="manuf_search" class="form-control" placeholder="Search manufacturer">
+                <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
             </div>
 
             <div class="col-md-2">
-                <label class="form-label">From Date</label>
-                <input type="date" class="form-control" name="from" value="<?= htmlspecialchars($from) ?>">
+                <label>From Date</label>
+                <input type="date" name="from" class="form-control" value="<?= $from ?>">
             </div>
 
             <div class="col-md-2">
-                <label class="form-label">To Date</label>
-                <input type="date" class="form-control" name="to" value="<?= htmlspecialchars($to) ?>">
+                <label>To Date</label>
+                <input type="date" name="to" class="form-control" value="<?= $to ?>">
             </div>
 
             <div class="col-md-2 align-self-end">
                 <button type="submit" class="btn btn-primary w-100">Search</button>
             </div>
+
         </form>
 
-        <!-- 📊 Report Table -->
         <table id="reportTable" class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
                     <th>Item ID</th>
-                    <th>Item Description</th>
+                    <th>Description</th>
                     <th class="text-end">Purchase Qty</th>
-                    <th class="text-end">Purchase Amount</th>
+                    <th class="text-end">Purchase Amt</th>
                     <th class="text-end">Sale Qty</th>
-                    <th class="text-end">Sale Amount</th>
+                    <th class="text-end">Sale Amt</th>
                 </tr>
             </thead>
             <tbody>
@@ -204,19 +259,36 @@ if (!empty($manuf)) {
 
     </div>
 
-    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
-        $(document).ready(function() {
+        $(function() {
+
+            $('#manuf_search').autocomplete({
+                minLength: 2,
+                source: function(request, response) {
+                    $.getJSON('r_manuf_sale_pur_reg.php', {
+                        ajax: 'manuf_search',
+                        term: request.term,
+                        branch: $('#branch').val()
+                    }, response);
+                },
+                select: function(event, ui) {
+                    $('#manuf_search').val(ui.item.label);
+                    $('#manuf').val(ui.item.value);
+                    return false;
+                }
+            });
+
             $('#reportTable').DataTable({
                 pageLength: 25,
                 order: [
                     [1, 'asc']
                 ]
             });
+
         });
     </script>
 
