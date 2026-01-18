@@ -16,7 +16,7 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND';
 $rows = [];
 
 /* =====================================================
-   CONNECT TO CENTRAL DB → GET BRANCH CONFIG
+   GET BRANCH DB CONFIG (CENTRAL DB)
 ===================================================== */
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
 $stmt->bind_param("s", $branch);
@@ -47,9 +47,9 @@ $branch_db->set_charset('utf8mb4');
 $branch_db->query("SET time_zone = '+05:30'");
 
 /* =====================================================
-   REPORT QUERY (DATETIME-SAFE)
+   REPORT QUERY (FINAL & FIXED)
 ===================================================== */
-if (!empty($manuf)) {
+if ($manuf !== '') {
 
     $sql = "
 SELECT 
@@ -95,13 +95,18 @@ LEFT JOIN (
 ) SR ON SR.item_id = I.item_id
 
 WHERE I.manuf_id = ?
-HAVING pur_qty <> 0 OR sal_qty <> 0
+AND (
+    P.item_id IS NOT NULL
+ OR S.item_id IS NOT NULL
+ OR PR.item_id IS NOT NULL
+ OR SR.item_id IS NOT NULL
+)
 ORDER BY I.item_desc
 ";
 
     $stmt = $branch_db->prepare($sql);
     $stmt->bind_param(
-        "sssssssss",   // ✅ EXACTLY 9 placeholders
+        "sssssssss",   // EXACTLY 9
         $from,
         $to,
         $from,
@@ -126,7 +131,7 @@ ORDER BY I.item_desc
 
 <head>
     <meta charset="UTF-8">
-    <title>MANUFACTURE WISE SALE PURCHASE REPORT</title>
+    <title>Manufacture Wise Sale Purchase Report</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
@@ -134,6 +139,7 @@ ORDER BY I.item_desc
 </head>
 
 <body class="bg-light">
+
     <div class="container py-4">
 
         <h3 class="mb-4 text-uppercase">Manufacture Wise Sale Purchase Report</h3>
@@ -150,14 +156,8 @@ ORDER BY I.item_desc
 
             <div class="col-md-3">
                 <label>Manufacturer</label>
-                <input type="text"
-                    id="manuf_search"
-                    class="form-control"
-                    placeholder="Search manufacturer...">
-                <input type="hidden"
-                    name="manuf"
-                    id="manuf"
-                    value="<?= htmlspecialchars($manuf) ?>">
+                <input type="text" id="manuf_search" class="form-control" placeholder="Search manufacturer...">
+                <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
             </div>
 
             <div class="col-md-2">
