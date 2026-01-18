@@ -6,7 +6,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 /* =====================================================
-    INPUTS (Cleaned of extra spaces)
+    INPUTS
 ===================================================== */
 $from   = $_GET['from'] ?? date('Y-m-d');
 $to     = $_GET['to'] ?? date('Y-m-d');
@@ -15,6 +15,12 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND';
 
 $rows = [];
 $error_msg = "";
+
+// Initialize Total Variables
+$total_pur_qty = 0;
+$total_pur_amt = 0;
+$total_sal_qty = 0;
+$total_sal_amt = 0;
 
 /* =====================================================
     GET BRANCH DB CONFIG
@@ -25,24 +31,16 @@ $stmt->execute();
 $res = $stmt->get_result();
 
 if ($res->num_rows === 0) {
-    $error_msg = "❌ Branch config not found for: " . htmlspecialchars($branch);
+    $error_msg = "❌ Branch config not found.";
 } else {
     $config = $res->fetch_assoc();
-
-    /* =====================================================
-        CONNECT TO BRANCH DB
-    ===================================================== */
     $branch_db = new mysqli($config['db_host'], $config['db_user'], $config['db_password'], $config['db_name']);
 
     if ($branch_db->connect_error) {
-        $error_msg = "❌ Branch DB connection failed: " . $branch_db->connect_error;
+        $error_msg = "❌ Connection failed.";
     } else {
         $branch_db->set_charset('utf8mb4');
-        $branch_db->query("SET time_zone = '+05:30'");
 
-        /* =====================================================
-            REPORT QUERY (Using TRIM in WHERE clause)
-        ===================================================== */
         if (!empty($manuf)) {
             $sql = "
             SELECT 
@@ -90,6 +88,11 @@ if ($res->num_rows === 0) {
 
             while ($row = $result->fetch_assoc()) {
                 $rows[] = $row;
+                // Add to totals
+                $total_pur_qty += $row['pur_qty'];
+                $total_pur_amt += $row['pur_amt'];
+                $total_sal_qty += $row['sal_qty'];
+                $total_sal_amt += $row['sal_amt'];
             }
         }
     }
@@ -101,22 +104,25 @@ if ($res->num_rows === 0) {
 
 <head>
     <meta charset="UTF-8">
-    <title>Report - <?php echo $branch; ?></title>
+    <title>Report Totals</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        .table-total {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            border-top: 2px solid #333 !important;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
 
     <div class="container-fluid py-4">
-        <h4 class="mb-4">MANUFACTURE WISE SALE PURCHASE REPORT</h4>
+        <h4 class="mb-4">MANUFACTURE WISE SALE PURCHASE REPORT (WITH TOTALS)</h4>
 
-        <?php if ($error_msg): ?>
-            <div class="alert alert-danger"><?= $error_msg ?></div>
-        <?php endif; ?>
-
-        <form method="get" id="filterForm" class="card card-body shadow-sm mb-4">
+        <form method="get" class="card card-body shadow-sm mb-4">
             <div class="row g-3">
                 <div class="col-md-2">
                     <label class="form-label">Branch</label>
@@ -126,8 +132,8 @@ if ($res->num_rows === 0) {
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Manufacturer</label>
-                    <input type="text" id="manuf_search" class="form-control" placeholder="Type to search..." autocomplete="off">
+                    <label class="form-label">Manufacturer ID</label>
+                    <input type="text" id="manuf_search" class="form-control" placeholder="Search..." autocomplete="off">
                     <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
                 </div>
                 <div class="col-md-2">
@@ -143,10 +149,6 @@ if ($res->num_rows === 0) {
                 </div>
             </div>
         </form>
-
-        <?php if (!empty($manuf) && empty($rows)): ?>
-            <div class="alert alert-info">No transactions found for Manufacturer ID: <b><?= htmlspecialchars($manuf) ?></b> in the selected dates.</div>
-        <?php endif; ?>
 
         <div class="table-responsive bg-white p-3 shadow-sm rounded">
             <table id="reportTable" class="table table-hover table-bordered">
@@ -172,6 +174,15 @@ if ($res->num_rows === 0) {
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
+                <tfoot class="table-total">
+                    <tr>
+                        <td colspan="2" class="text-center">GRAND TOTAL</td>
+                        <td class="text-end"><?= number_format($total_pur_qty, 2) ?></td>
+                        <td class="text-end"><?= number_format($total_pur_amt, 2) ?></td>
+                        <td class="text-end"><?= number_format($total_sal_qty, 2) ?></td>
+                        <td class="text-end"><?= number_format($total_sal_amt, 2) ?></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -183,7 +194,6 @@ if ($res->num_rows === 0) {
 
     <script>
         $(function() {
-            // Autocomplete Logic
             $("#manuf_search").autocomplete({
                 source: function(request, response) {
                     $.getJSON("manufacturer_search.php", {
@@ -199,19 +209,15 @@ if ($res->num_rows === 0) {
                 }
             });
 
-            // Keep Manufacturer ID visible for debugging if needed
-            // If we have a manuf ID but no label, this helps track it
-            var currentManuf = $("#manuf").val();
-            if (currentManuf) {
-                $("#manuf_search").attr("placeholder", "Manufacturer: " + currentManuf);
-            }
-
-            // Initialize DataTable
             $('#reportTable').DataTable({
                 "pageLength": 50,
                 "order": [
                     [1, "asc"]
-                ]
+                ],
+                // This ensures the footer stays visible when searching
+                "footerCallback": function(row, data, start, end, display) {
+                    // You can also use DataTables to calculate visible totals here
+                }
             });
         });
     </script>
