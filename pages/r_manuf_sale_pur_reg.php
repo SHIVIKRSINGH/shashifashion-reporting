@@ -6,72 +6,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 /* =====================================================
-   AJAX: Manufacturer Search (Branch-wise)
+   INPUTS
 ===================================================== */
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'manuf_search') {
-
-    $term   = $_GET['term'] ?? '';
-    $branch = $_GET['branch'] ?? '';
-
-    if ($branch === '' || $term === '') {
-        echo json_encode([]);
-        exit;
-    }
-
-    $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
-    $stmt->bind_param("s", $branch);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    if ($res->num_rows === 0) {
-        echo json_encode([]);
-        exit;
-    }
-
-    $cfg = $res->fetch_assoc();
-
-    $db = new mysqli(
-        $cfg['db_host'],
-        $cfg['db_user'],
-        $cfg['db_password'],
-        $cfg['db_name']
-    );
-
-    if ($db->connect_error) {
-        echo json_encode([]);
-        exit;
-    }
-
-    $sql = "
-        SELECT manuf_id, manuf_name
-        FROM m_manuf
-        WHERE manuf_name LIKE CONCAT('%', ?, '%')
-           OR manuf_id LIKE CONCAT('%', ?, '%')
-        ORDER BY manuf_name
-        LIMIT 20
-    ";
-
-    $stmt = $db->prepare($sql);
-    $stmt->bind_param("ss", $term, $term);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = [
-            'label' => $row['manuf_name'] . ' (' . $row['manuf_id'] . ')',
-            'value' => $row['manuf_id']
-        ];
-    }
-
-    echo json_encode($data);
-    exit;
-}
-
-/* =====================================================
-   NORMAL PAGE LOGIC
-===================================================== */
-
 $from   = $_GET['from'] ?? date('Y-m-d');
 $to     = $_GET['to'] ?? date('Y-m-d');
 $manuf  = $_GET['manuf'] ?? '';
@@ -79,6 +15,9 @@ $branch = $_GET['branch'] ?? 'SHASHI-ND';
 
 $rows = [];
 
+/* =====================================================
+   CONNECT TO CENTRAL DB → GET BRANCH CONFIG
+===================================================== */
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
 $stmt->bind_param("s", $branch);
 $stmt->execute();
@@ -90,6 +29,9 @@ if ($res->num_rows === 0) {
 
 $config = $res->fetch_assoc();
 
+/* =====================================================
+   CONNECT TO BRANCH DB
+===================================================== */
 $branch_db = new mysqli(
     $config['db_host'],
     $config['db_user'],
@@ -113,10 +55,13 @@ if (!empty($manuf)) {
 SELECT 
     I.item_id,
     I.item_desc,
+
     IFNULL(P.pur_qty,0) - IFNULL(PR.pur_ret_qty,0) AS pur_qty,
     IFNULL(P.pur_amt,0) - IFNULL(PR.pur_ret_amt,0) AS pur_amt,
+
     IFNULL(S.sal_qty,0) - IFNULL(SR.sal_ret_qty,0) AS sal_qty,
     IFNULL(S.sal_amt,0) - IFNULL(SR.sal_ret_amt,0) AS sal_amt
+
 FROM M_ITEM_HDR I
 
 LEFT JOIN (
@@ -193,7 +138,7 @@ ORDER BY I.item_desc
 
         <h3 class="mb-4 text-uppercase">Manufacture Wise Sale Purchase Report</h3>
 
-        <form method="get" class="row g-3 mb-4" id="searchForm">
+        <form method="get" class="row g-3 mb-4">
 
             <div class="col-md-3">
                 <label>Branch</label>
@@ -205,8 +150,14 @@ ORDER BY I.item_desc
 
             <div class="col-md-3">
                 <label>Manufacturer</label>
-                <input type="text" id="manuf_search" class="form-control" placeholder="Type & select manufacturer">
-                <input type="hidden" name="manuf" id="manuf" value="<?= htmlspecialchars($manuf) ?>">
+                <input type="text"
+                    id="manuf_search"
+                    class="form-control"
+                    placeholder="Search manufacturer...">
+                <input type="hidden"
+                    name="manuf"
+                    id="manuf"
+                    value="<?= htmlspecialchars($manuf) ?>">
             </div>
 
             <div class="col-md-2">
@@ -259,51 +210,18 @@ ORDER BY I.item_desc
     <script>
         $(function() {
 
-            let selectedManuf = false;
-
-            $('#manuf_search').autocomplete({
-                minLength: 2,
+            $("#manuf_search").autocomplete({
                 source: function(request, response) {
-                    $.getJSON('r_manuf_sale_pur_reg.php', {
-                        ajax: 'manuf_search',
+                    $.getJSON("manufacturer_search.php", {
                         term: request.term,
-                        branch: $('#branch').val()
+                        branch: $("#branch").val()
                     }, response);
                 },
+                minLength: 2,
                 select: function(event, ui) {
-                    $('#manuf_search').val(ui.item.label);
-                    $('#manuf').val(ui.item.value);
-                    selectedManuf = true;
+                    $("#manuf_search").val(ui.item.label);
+                    $("#manuf").val(ui.item.value);
                     return false;
-                },
-                change: function() {
-                    if (!selectedManuf) {
-                        $('#manuf').val('');
-                    }
-                }
-            });
-
-            /* 🔥 CRITICAL FIX: Force selection on submit */
-            $('#searchForm').on('submit', function(e) {
-
-                if ($('#manuf').val() === '' && $('#manuf_search').val() !== '') {
-
-                    e.preventDefault();
-
-                    $.getJSON('r_manuf_sale_pur_reg.php', {
-                        ajax: 'manuf_search',
-                        term: $('#manuf_search').val(),
-                        branch: $('#branch').val()
-                    }, function(data) {
-
-                        if (data.length === 1) {
-                            $('#manuf').val(data[0].value);
-                            $('#manuf_search').val(data[0].label);
-                            $('#searchForm')[0].submit();
-                        } else {
-                            alert('Please select manufacturer from list');
-                        }
-                    });
                 }
             });
 
