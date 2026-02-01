@@ -2,10 +2,16 @@
 require_once "../includes/config.php";
 
 /* ===========================
-   BRANCH HANDLING
+   BRANCH LOGIC
 =========================== */
 $branch = $_GET['branch'] ?? 'SHASHI-ND';
 $showMilk = ($branch === 'SHIVI-ND');
+
+/* ===========================
+   DATE FILTERS
+=========================== */
+$from_date = $_GET['from_date'] ?? date('Y-m-01');
+$to_date   = $_GET['to_date']   ?? date('Y-m-d');
 
 /* ===========================
    HARDCODED MILK ITEMS
@@ -26,12 +32,44 @@ $milk_items = [
 ];
 
 /* ===========================
-   SAVE SESSION
+   EDIT SESSION FETCH
+=========================== */
+$editSession = null;
+$editQty = [];
+
+if ($showMilk && isset($_GET['edit_date'], $_GET['edit_session'])) {
+    $stmt = $con->prepare("
+        SELECT * FROM milk_session_hdr
+        WHERE branch_id='SHIVI-ND'
+        AND milk_date=? AND session=?
+    ");
+    $stmt->bind_param("ss", $_GET['edit_date'], $_GET['edit_session']);
+    $stmt->execute();
+    $editSession = $stmt->get_result()->fetch_assoc();
+
+    if ($editSession) {
+        $stmt = $con->prepare("
+            SELECT item_code, qty
+            FROM milk_session_det
+            WHERE session_id=?
+        ");
+        $stmt->bind_param("i", $editSession['session_id']);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($r = $res->fetch_assoc()) {
+            $editQty[$r['item_code']] = $r['qty'];
+        }
+    }
+}
+
+/* ===========================
+   SAVE / UPDATE SESSION
 =========================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
 
     $milk_date = $_POST['milk_date'];
     $session   = $_POST['session'];
+    $session_id = $_POST['session_id'] ?? null;
 
     $totCost = $totMrp = 0;
 
@@ -44,23 +82,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
 
     $profit = $totMrp - $totCost;
 
-    $stmt = $con->prepare("
-        INSERT INTO milk_session_hdr
-        (branch_id, milk_date, session, total_cost_amt, total_mrp_amt, net_profit)
-        VALUES (?,?,?,?,?,?)
-    ");
-    $stmt->bind_param(
-        "sssddd",
-        $branch,
-        $milk_date,
-        $session,
-        $totCost,
-        $totMrp,
-        $profit
-    );
-    $stmt->execute();
+    if ($session_id) {
+        // UPDATE
+        $stmt = $con->prepare("
+            UPDATE milk_session_hdr
+            SET total_cost_amt=?, total_mrp_amt=?, net_profit=?
+            WHERE session_id=?
+        ");
+        $stmt->bind_param("dddi", $totCost, $totMrp, $profit, $session_id);
+        $stmt->execute();
 
-    $session_id = $stmt->insert_id;
+        $con->query("DELETE FROM milk_session_det WHERE session_id=$session_id");
+    } else {
+        // INSERT
+        $stmt = $con->prepare("
+            INSERT INTO milk_session_hdr
+            (branch_id, milk_date, session, total_cost_amt, total_mrp_amt, net_profit)
+            VALUES ('SHIVI-ND',?,?,?,?,?)
+        ");
+        $stmt->bind_param("ssddd", $milk_date, $session, $totCost, $totMrp, $profit);
+        $stmt->execute();
+        $session_id = $stmt->insert_id;
+    }
 
     foreach ($_POST['qty'] as $code => $qty) {
         if ($qty > 0) {
@@ -69,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
 
             $stmt = $con->prepare("
                 INSERT INTO milk_session_det
-                (session_id, item_code, qty, cost_rate, mrp_rate, cost_amt, mrp_amt)
+                (session_id,item_code,qty,cost_rate,mrp_rate,cost_amt,mrp_amt)
                 VALUES (?,?,?,?,?,?,?)
             ");
             $stmt->bind_param(
@@ -88,33 +131,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
 }
 
 /* ===========================
-   PAYMENT SUMMARY
+   SESSION LIST (FROM–TO)
 =========================== */
-$yest_even = $today_morn = null;
-
+$sessions = [];
 if ($showMilk) {
-    $yest = date('Y-m-d', strtotime('-1 day'));
-    $today = date('Y-m-d');
-
-    $q = $con->prepare("
-        SELECT * FROM milk_session_hdr
-        WHERE branch_id='SHIVI-ND' AND milk_date=? AND session='EVENING'
+    $stmt = $con->prepare("
+        SELECT *
+        FROM milk_session_hdr
+        WHERE branch_id='SHIVI-ND'
+        AND milk_date BETWEEN ? AND ?
+        ORDER BY milk_date DESC, FIELD(session,'EVENING','MORNING')
     ");
-    $q->bind_param("s", $yest);
-    $q->execute();
-    $yest_even = $q->get_result()->fetch_assoc();
-
-    $q = $con->prepare("
-        SELECT * FROM milk_session_hdr
-        WHERE branch_id='SHIVI-ND' AND milk_date=? AND session='MORNING'
-    ");
-    $q->bind_param("s", $today);
-    $q->execute();
-    $today_morn = $q->get_result()->fetch_assoc();
+    $stmt->bind_param("ss", $from_date, $to_date);
+    $stmt->execute();
+    $sessions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
-$totalCost = ($yest_even['total_cost_amt'] ?? 0) + ($today_morn['total_cost_amt'] ?? 0);
-$totalMrp  = ($yest_even['total_mrp_amt'] ?? 0)  + ($today_morn['total_mrp_amt'] ?? 0);
+/* ===========================
+   PAYMENT SUMMARY
+=========================== */
+$yest = date('Y-m-d', strtotime('-1 day'));
+$today = date('Y-m-d');
+
+function getAmt($con, $d, $s)
+{
+    $q = $con->prepare("
+        SELECT total_cost_amt,total_mrp_amt
+        FROM milk_session_hdr
+        WHERE branch_id='SHIVI-ND'
+        AND milk_date=? AND session=?
+    ");
+    $q->bind_param("ss", $d, $s);
+    $q->execute();
+    return $q->get_result()->fetch_assoc();
+}
+
+$ye = $showMilk ? getAmt($con, $yest, 'EVENING') : [];
+$tm = $showMilk ? getAmt($con, $today, 'MORNING') : [];
+
+$totalCost = ($ye['total_cost_amt'] ?? 0) + ($tm['total_cost_amt'] ?? 0);
+$totalMrp  = ($ye['total_mrp_amt']  ?? 0) + ($tm['total_mrp_amt']  ?? 0);
 $netProfit = $totalMrp - $totalCost;
 ?>
 
@@ -130,7 +186,8 @@ $netProfit = $totalMrp - $totalCost;
 
     <div class="container py-4">
 
-        <form method="get" class="mb-4">
+        <!-- BRANCH -->
+        <form method="get" class="mb-3">
             <select name="branch" class="form-select w-25" onchange="this.form.submit()">
                 <option value="SHASHI-ND" <?= $branch == 'SHASHI-ND' ? 'selected' : '' ?>>SHASHI-ND</option>
                 <option value="SHIVI-ND" <?= $branch == 'SHIVI-ND' ? 'selected' : '' ?>>SHIVI-ND</option>
@@ -139,51 +196,99 @@ $netProfit = $totalMrp - $totalCost;
 
         <?php if ($showMilk): ?>
 
+            <!-- DATE FILTER -->
+            <form method="get" class="row g-2 mb-3">
+                <input type="hidden" name="branch" value="SHIVI-ND">
+                <div class="col-md-3">
+                    <input type="date" name="from_date" value="<?= $from_date ?>" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" name="to_date" value="<?= $to_date ?>" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100">View</button>
+                </div>
+            </form>
+
+            <!-- SESSION LIST -->
+            <?php if ($sessions): ?>
+                <table class="table table-sm table-bordered mb-4">
+                    <tr class="table-secondary">
+                        <th>Date</th>
+                        <th>Session</th>
+                        <th>Cost</th>
+                        <th>MRP</th>
+                        <th>Profit</th>
+                        <th>Edit</th>
+                    </tr>
+                    <?php foreach ($sessions as $s): ?>
+                        <tr>
+                            <td><?= date('d-m-Y', strtotime($s['milk_date'])) ?></td>
+                            <td><?= $s['session'] ?></td>
+                            <td><?= number_format($s['total_cost_amt'], 2) ?></td>
+                            <td><?= number_format($s['total_mrp_amt'], 2) ?></td>
+                            <td><?= number_format($s['net_profit'], 2) ?></td>
+                            <td>
+                                <a class="btn btn-sm btn-warning"
+                                    href="?branch=SHIVI-ND&edit_date=<?= $s['milk_date'] ?>&edit_session=<?= $s['session'] ?>">
+                                    Edit
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
+
+            <!-- ENTRY / EDIT FORM -->
             <form method="post">
-                <div class="row mb-3">
+                <?php if ($editSession): ?>
+                    <input type="hidden" name="session_id" value="<?= $editSession['session_id'] ?>">
+                <?php endif; ?>
+
+                <div class="row mb-2">
                     <div class="col-md-3">
-                        <input type="date" name="milk_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="milk_date" class="form-control"
+                            value="<?= $editSession['milk_date'] ?? date('Y-m-d') ?>" required>
                     </div>
                     <div class="col-md-3">
                         <select name="session" class="form-select" required>
-                            <option value="MORNING">MORNING</option>
-                            <option value="EVENING">EVENING</option>
+                            <option value="MORNING" <?= ($editSession['session'] ?? '') == 'MORNING' ? 'selected' : '' ?>>MORNING</option>
+                            <option value="EVENING" <?= ($editSession['session'] ?? '') == 'EVENING' ? 'selected' : '' ?>>EVENING</option>
                         </select>
                     </div>
                 </div>
 
                 <table class="table table-bordered">
-                    <thead class="table-dark">
+                    <tr class="table-dark">
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Cost</th>
+                        <th>MRP</th>
+                    </tr>
+                    <?php foreach ($milk_items as $code => $m): ?>
                         <tr>
-                            <th>Item</th>
-                            <th>Qty</th>
-                            <th>Cost</th>
-                            <th>MRP</th>
-                            <th>Cost Amt</th>
-                            <th>MRP Amt</th>
+                            <td><?= $m['name'] ?></td>
+                            <td>
+                                <input type="number" step="0.01"
+                                    name="qty[<?= $code ?>]"
+                                    value="<?= $editQty[$code] ?? '' ?>"
+                                    class="form-control">
+                            </td>
+                            <td><?= $m['cost'] ?></td>
+                            <td><?= $m['mrp'] ?></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($milk_items as $code => $m): ?>
-                            <tr>
-                                <td><?= $m['name'] ?></td>
-                                <td><input type="number" step="0.01" name="qty[<?= $code ?>]" class="form-control qty"></td>
-                                <td><?= $m['cost'] ?></td>
-                                <td><?= $m['mrp'] ?></td>
-                                <td class="cost">0.00</td>
-                                <td class="mrp">0.00</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
+                    <?php endforeach; ?>
                 </table>
 
-                <button class="btn btn-success">SAVE SESSION</button>
+                <button class="btn btn-success">
+                    <?= $editSession ? 'UPDATE SESSION' : 'SAVE SESSION' ?>
+                </button>
             </form>
 
             <hr>
 
             <div class="card p-3">
-                <h5>1 Day Payment Summary</h5>
+                <h5>1 Day Payment (Yesterday Evening + Today Morning)</h5>
                 <p>Total Cost : <b><?= number_format($totalCost, 2) ?></b></p>
                 <p>Total MRP : <b><?= number_format($totalMrp, 2) ?></b></p>
                 <p>Net Profit : <b><?= number_format($netProfit, 2) ?></b></p>
@@ -192,20 +297,6 @@ $netProfit = $totalMrp - $totalCost;
         <?php endif; ?>
 
     </div>
-
-    <script>
-        const items = <?= json_encode($milk_items) ?>;
-        document.querySelectorAll('.qty').forEach((el, i) => {
-            el.addEventListener('input', () => {
-                let tr = el.closest('tr');
-                let code = Object.keys(items)[i];
-                let q = parseFloat(el.value) || 0;
-                tr.querySelector('.cost').innerText = (q * items[code].cost).toFixed(2);
-                tr.querySelector('.mrp').innerText = (q * items[code].mrp).toFixed(2);
-            });
-        });
-    </script>
-
 </body>
 
 </html>
