@@ -107,14 +107,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
 
     foreach ($_POST['qty'] as $code => $qty) {
         if ($qty > 0) {
+
             $c = $milk_items[$code]['cost'];
             $m = $milk_items[$code]['mrp'];
 
+            // ✅ MUST be variables (not expressions)
+            $cost_amt = $qty * $c;
+            $mrp_amt  = $qty * $m;
+
             $stmt = $con->prepare("
-                INSERT INTO milk_session_det
-                (session_id,item_code,qty,cost_rate,mrp_rate,cost_amt,mrp_amt)
-                VALUES (?,?,?,?,?,?,?)
-            ");
+            INSERT INTO milk_session_det
+            (session_id, item_code, qty, cost_rate, mrp_rate, cost_amt, mrp_amt)
+            VALUES (?,?,?,?,?,?,?)
+        ");
+
             $stmt->bind_param(
                 "isidddd",
                 $session_id,
@@ -122,9 +128,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $showMilk) {
                 $qty,
                 $c,
                 $m,
-                $qty * $c,
-                $qty * $m
+                $cost_amt,
+                $mrp_amt
             );
+
             $stmt->execute();
         }
     }
