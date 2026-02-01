@@ -12,13 +12,17 @@ $showMilk = ($branch === 'SHIVI-ND');
 =========================== */
 $milk_items = [
     'GOLD_1L' => ['name' => 'GOLD 1 LTR', 'cost' => 811, 'mrp' => 828],
-    'GOLD_2L' => ['name' => 'GOLD 2 LTR', 'cost' => 823, 'mrp' => 840],
+    'GOLD_1/2L' => ['name' => 'GOLD 1/2 LTR', 'cost' => 823, 'mrp' => 840],
     'TOND_1L' => ['name' => 'TOND 1 LTR', 'cost' => 668, 'mrp' => 684],
-    'TOND_2L' => ['name' => 'TOND 2 LTR', 'cost' => 680, 'mrp' => 696],
+    'TOND_1/2L' => ['name' => 'TOND 1/2 LTR', 'cost' => 680, 'mrp' => 696],
     'COW_1L'  => ['name' => 'COW 1 LTR',  'cost' => 684, 'mrp' => 708],
+    'COW_1/2L'  => ['name' => 'COW 1/2 LTR',  'cost' => 692, 'mrp' => 720],
     'BUFF_1L' => ['name' => 'BUFFALO 1 LTR', 'cost' => 876, 'mrp' => 900],
     'CURD_400' => ['name' => 'CURD 400 GM', 'cost' => 990, 'mrp' => 1050],
     'CURD_1K' => ['name' => 'CURD 1 KG', 'cost' => 894, 'mrp' => 924],
+    'CURD_10rs' => ['name' => 'CURD 10 RS', 'cost' => 9, 'mrp' => 10],
+    'PANEER_200GM' => ['name' => 'PANEER 200GM', 'cost' => 82, 'mrp' => 92],
+    'CHAACH' => ['name' => 'CHAACH', 'cost' => 336, 'mrp' => 360],
 ];
 
 /* ===========================
