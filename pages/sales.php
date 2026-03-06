@@ -129,6 +129,7 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
                 <?php endforeach; ?>
             </tbody>
         </table>
+        
 
         <div class="mt-3">
             <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
