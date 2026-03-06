@@ -83,7 +83,7 @@ SELECT
     MIN(B.sl_no) AS sl_no,
     B.item_id,
     COALESCE(C.item_desc,'Item Missing') AS item_name,
-    C.hsn_code,
+    ANY_VALUE(C.hsn_code) AS hsn_code,
 
     SUM(B.qty) AS qty,
     SUM(B.item_amt) AS item_amt,
@@ -92,34 +92,33 @@ SELECT
     SUM(B.net_amt) AS d_net_amt,
     SUM(B.cess_amt) AS cess_amt,
 
-    B.pur_rate,
-    B.disc_per,
-    B.vat_per,
-    B.net_rate,
-    B.mrp,
-    B.sales_price,
-    B.cess_perc,
+    ANY_VALUE(B.pur_rate) AS pur_rate,
+    ANY_VALUE(B.disc_per) AS disc_per,
+    ANY_VALUE(B.vat_per) AS vat_per,
+    ANY_VALUE(B.net_rate) AS net_rate,
+    ANY_VALUE(B.mrp) AS mrp,
+    ANY_VALUE(B.sales_price) AS sales_price,
+    ANY_VALUE(B.cess_perc) AS cess_perc,
 
     CASE 
-        WHEN B.net_rate > 0 
-        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.net_rate,2)
+        WHEN ANY_VALUE(B.net_rate) > 0 
+        THEN ROUND(((ANY_VALUE(B.mrp) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.net_rate),2)
         ELSE 0 
     END AS margin,
 
     CASE 
-        WHEN B.net_rate > 0 
-        THEN ROUND(((B.sales_price - B.net_rate) * 100) / B.net_rate,2)
+        WHEN ANY_VALUE(B.net_rate) > 0 
+        THEN ROUND(((ANY_VALUE(B.sales_price) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.net_rate),2)
         ELSE 0 
     END AS margin_on_sp,
 
     CASE 
-        WHEN B.mrp > 0 
-        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.mrp,2)
+        WHEN ANY_VALUE(B.mrp) > 0 
+        THEN ROUND(((ANY_VALUE(B.mrp) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.mrp),2)
         ELSE 0 
     END AS mark_down_margin
 
 FROM t_receipt_det B
-
 LEFT JOIN m_item_hdr C 
 ON B.item_id = C.item_id
 
