@@ -80,53 +80,53 @@ $stmt->close();
 // ==================== Get GRN Items (Optimized) ====================
 $stmt = $branch_db->prepare("
 SELECT 
-    MIN(B.sl_no) AS sl_no,
-    B.item_id,
+    B.sl_no,
+    B.bar_code,
+    TRIM(B.item_id) AS item_id,
+    C.hsn_code,
     COALESCE(C.item_desc,'Item Missing') AS item_name,
-    ANY_VALUE(C.hsn_code) AS hsn_code,
 
-    SUM(B.qty) AS qty,
-    SUM(B.item_amt) AS item_amt,
-    SUM(B.disc_amt) AS disc_amt,
-    SUM(B.vat_amt) AS vat_amt,
-    SUM(B.net_amt) AS d_net_amt,
-    SUM(B.cess_amt) AS cess_amt,
-
-    ANY_VALUE(B.pur_rate) AS pur_rate,
-    ANY_VALUE(B.disc_per) AS disc_per,
-    ANY_VALUE(B.vat_per) AS vat_per,
-    ANY_VALUE(B.net_rate) AS net_rate,
-    ANY_VALUE(B.mrp) AS mrp,
-    ANY_VALUE(B.sales_price) AS sales_price,
-    ANY_VALUE(B.cess_perc) AS cess_perc,
+    B.qty,
+    B.free_item_yn,
+    B.pur_rate,
+    B.item_amt,
+    B.disc_per,
+    B.disc_amt,
+    B.vat_per,
+    B.vat_amt,
+    B.net_rate,
+    B.net_amt AS d_net_amt,
+    B.mrp,
+    B.sales_price,
+    B.cess_perc,
+    B.cess_amt,
 
     CASE 
-        WHEN ANY_VALUE(B.net_rate) > 0 
-        THEN ROUND(((ANY_VALUE(B.mrp) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.net_rate),2)
+        WHEN B.net_rate > 0 
+        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.net_rate,2)
         ELSE 0 
     END AS margin,
 
     CASE 
-        WHEN ANY_VALUE(B.net_rate) > 0 
-        THEN ROUND(((ANY_VALUE(B.sales_price) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.net_rate),2)
+        WHEN B.net_rate > 0 
+        THEN ROUND(((B.sales_price - B.net_rate) * 100) / B.net_rate,2)
         ELSE 0 
     END AS margin_on_sp,
 
     CASE 
-        WHEN ANY_VALUE(B.mrp) > 0 
-        THEN ROUND(((ANY_VALUE(B.mrp) - ANY_VALUE(B.net_rate)) * 100) / ANY_VALUE(B.mrp),2)
+        WHEN B.mrp > 0 
+        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.mrp,2)
         ELSE 0 
     END AS mark_down_margin
 
 FROM t_receipt_det B
+
 LEFT JOIN m_item_hdr C 
-ON B.item_id = C.item_id
+ON TRIM(B.item_id) = TRIM(C.item_id)
 
-WHERE B.receipt_id = ?
+WHERE TRIM(B.receipt_id) = ?
 
-GROUP BY B.item_id
-
-ORDER BY sl_no
+ORDER BY CAST(B.sl_no AS SIGNED)
 ");
 
 $stmt->bind_param("s", $receipt_id);
