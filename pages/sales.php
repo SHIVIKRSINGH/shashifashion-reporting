@@ -121,7 +121,8 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
                         <td><?= htmlspecialchars($row['bill_time']) ?></td>
                         <td><?= number_format($row['net_amt_after_disc'], 2) ?></td>
                         <td>
-                            <a href="invoice_items_view.php?invoice_no=<?= urlencode($row['invoice_no']) ?>" class="btn btn-sm btn-outline-primary" title="View Invoice Details">
+                            <a href="invoice_items_view.php?invoice_no=<?= urlencode($row['invoice_no']) ?>&branch=<?= urlencode($_GET['branch'] ?? '') ?>"
+                                class="btn btn-sm btn-outline-primary">
                                 🔍 View
                             </a>
                         </td>
@@ -129,7 +130,7 @@ if ($stmt = $branch_db->prepare("SELECT SUM(net_amt_after_disc) as total FROM t_
                 <?php endforeach; ?>
             </tbody>
         </table>
-        
+
 
         <div class="mt-3">
             <h5>Total Sale: ₹ <?= number_format($total, 2) ?></h5>
