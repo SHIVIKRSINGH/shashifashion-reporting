@@ -156,14 +156,6 @@ $stmt->close();
 
 $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
 
-
-// ==================== DEBUG INFO ====================
-$debug_branch = $selected_branch;
-$debug_db = $config['db_name'];
-$debug_invoice = $invoice_hdr ? "YES" : "NO";
-$debug_items = count($invoice_det);
-$debug_payments = count($invoice_pay);
-
 ?>
 
 <!DOCTYPE html>
@@ -177,16 +169,6 @@ $debug_payments = count($invoice_pay);
 <body class="bg-light">
 
     <div class="container my-5">
-
-        <!-- DEBUG PANEL -->
-        <div class="alert alert-warning">
-            <b>Debug Info</b><br>
-            Branch ID: <b><?= $debug_branch ?></b><br>
-            Database: <b><?= $debug_db ?></b><br>
-            Invoice Found: <b><?= $debug_invoice ?></b><br>
-            Item Rows: <b><?= $debug_items ?></b><br>
-            Payment Rows: <b><?= $debug_payments ?></b>
-        </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">🧾 Invoice #<?= htmlspecialchars($invoice_no) ?></h3>
