@@ -119,8 +119,8 @@ foreach ($invoice_det as $row) {
         ];
     } else {
 
-        $grouped_items[$item_id]['qty']          += (float)$row['qty'];
-        $grouped_items[$item_id]['disc_amt']     += (float)$row['disc_amt'];
+        $grouped_items[$item_id]['qty'] += (float)$row['qty'];
+        $grouped_items[$item_id]['disc_amt'] += (float)$row['disc_amt'];
         $grouped_items[$item_id]['sale_tax_amt'] += (float)$row['sale_tax_amt'];
         $grouped_items[$item_id]['net_amt_total'] += (float)$row['net_amt'];
     }
@@ -156,6 +156,14 @@ $stmt->close();
 
 $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
 
+
+// ==================== DEBUG INFO ====================
+$debug_branch = $selected_branch;
+$debug_db = $config['db_name'];
+$debug_invoice = $invoice_hdr ? "YES" : "NO";
+$debug_items = count($invoice_det);
+$debug_payments = count($invoice_pay);
+
 ?>
 
 <!DOCTYPE html>
@@ -163,26 +171,29 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
 
 <head>
     <title>Invoice #<?= htmlspecialchars($invoice_no) ?> - Details</title>
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
 </head>
 
 <body class="bg-light">
 
     <div class="container my-5">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-
-            <h3 class="mb-0">🧾 Invoice #<?= htmlspecialchars($invoice_no) ?></h3>
-
+        <!-- DEBUG PANEL -->
+        <div class="alert alert-warning">
+            <b>Debug Info</b><br>
+            Branch ID: <b><?= $debug_branch ?></b><br>
+            Database: <b><?= $debug_db ?></b><br>
+            Invoice Found: <b><?= $debug_invoice ?></b><br>
+            Item Rows: <b><?= $debug_items ?></b><br>
+            Payment Rows: <b><?= $debug_payments ?></b>
         </div>
 
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">🧾 Invoice #<?= htmlspecialchars($invoice_no) ?></h3>
+        </div>
 
         <!-- ==================== Invoice Items ==================== -->
-
         <div class="card shadow-sm mb-4">
-
             <div class="card-body">
 
                 <h5 class="card-title">📦 Invoice Item Details</h5>
@@ -192,7 +203,6 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                     <table class="table table-bordered table-striped table-hover">
 
                         <thead class="table-dark text-center">
-
                             <tr>
                                 <th>Sl</th>
                                 <th>Item Id</th>
@@ -207,7 +217,6 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                                 <th>Net Amt</th>
                                 <th>Pur Rate</th>
                             </tr>
-
                         </thead>
 
                         <tbody>
@@ -226,37 +235,23 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                                     <tr class="text-center">
 
                                         <td><?= $i++ ?></td>
-
                                         <td><?= htmlspecialchars($row['item_id']) ?></td>
 
                                         <td class="text-start">
-
                                             <?= htmlspecialchars($row['item_name']) ?><br>
-
                                             <small class="text-muted">
-
                                                 (per unit: <?= number_format($row['net_amt_total'] / max(1, $row['qty']), 2) ?>)
-
                                             </small>
-
                                         </td>
 
                                         <td><?= $row['qty'] ?></td>
-
                                         <td><?= number_format($row['mrp'], 2) ?></td>
-
                                         <td><?= number_format($row['sale_price'], 2) ?></td>
-
                                         <td><?= number_format($row['disc_per'], 2) ?></td>
-
                                         <td><?= number_format($row['disc_amt'], 2) ?></td>
-
                                         <td><?= number_format($row['sale_tax_per'], 2) ?></td>
-
                                         <td><?= number_format($row['sale_tax_amt'], 2) ?></td>
-
                                         <td><?= number_format($row['net_amt_total'], 2) ?></td>
-
                                         <td><?= number_format($row['pur_rate'], 2) ?></td>
 
                                     </tr>
@@ -264,30 +259,22 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                                 <?php endforeach; ?>
 
                                 <tr class="fw-bold text-end">
-
                                     <td colspan="10">Grand Total</td>
-
                                     <td><?= number_format($invoice_hdr['net_amt_after_disc'] ?? 0, 2) ?></td>
-
                                     <td></td>
-
                                 </tr>
 
                             <?php endif; ?>
 
                         </tbody>
-
                     </table>
 
                 </div>
             </div>
         </div>
 
-
         <!-- ==================== Payments ==================== -->
-
         <div class="card shadow-sm">
-
             <div class="card-body">
 
                 <h5 class="card-title">💳 Payment Details</h5>
@@ -297,7 +284,6 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                     <table class="table table-bordered table-striped table-hover">
 
                         <thead class="table-dark text-center">
-
                             <tr>
                                 <th>Sl</th>
                                 <th>Pay Mode</th>
@@ -306,7 +292,6 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                                 <th>Bank</th>
                                 <th>Card No</th>
                             </tr>
-
                         </thead>
 
                         <tbody>
@@ -323,43 +308,29 @@ $total_payment = array_sum(array_column($invoice_pay, 'pay_amt'));
                                 foreach ($invoice_pay as $row): ?>
 
                                     <tr class="text-center">
-
                                         <td><?= $j++ ?></td>
-
                                         <td><?= htmlspecialchars($row['pay_mode_id'] ?? '-') ?></td>
-
                                         <td><?= number_format($row['pay_amt'] ?? 0, 2) ?></td>
-
                                         <td><?= htmlspecialchars($row['ref_amt'] ?? '-') ?></td>
-
                                         <td><?= htmlspecialchars($row['bank_name'] ?? '-') ?></td>
-
                                         <td><?= htmlspecialchars($row['cc_no'] ?? '-') ?></td>
-
                                     </tr>
 
                                 <?php endforeach; ?>
 
                                 <tr class="fw-bold text-end">
-
                                     <td colspan="2">Total Payment</td>
-
                                     <td><?= number_format($total_payment, 2) ?></td>
-
                                     <td colspan="3"></td>
-
                                 </tr>
 
                             <?php endif; ?>
 
                         </tbody>
-
                     </table>
 
                 </div>
-
             </div>
-
         </div>
 
     </div>
