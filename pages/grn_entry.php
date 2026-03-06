@@ -23,6 +23,15 @@ include "../includes/header.php";
         .table td {
             vertical-align: middle;
         }
+
+        /* barcode scanner */
+
+        #scanner-container {
+            width: 100%;
+            max-width: 500px;
+            border: 2px solid #ddd;
+            margin-top: 15px;
+        }
     </style>
 
 </head>
@@ -73,7 +82,6 @@ include "../includes/header.php";
 
                 </div>
 
-
                 <div class="row mt-3">
 
                     <div class="col-md-2">
@@ -87,7 +95,6 @@ include "../includes/header.php";
         </div>
 
 
-
         <!-- ================= ITEM ENTRY PANEL ================= -->
 
         <div class="card mb-3">
@@ -96,15 +103,24 @@ include "../includes/header.php";
                 <div class="row">
 
                     <div class="col-md-3">
+
                         <label>Barcode</label>
-                        <input type="text" id="barcode" class="form-control" placeholder="Scan barcode">
+
+                        <input type="text" id="barcode" class="form-control" placeholder="Scan or type barcode">
+
+                        <button class="btn btn-primary btn-sm mt-2" onclick="startScanner()">
+                            📷 Scan Barcode
+                        </button>
+
                     </div>
 
                     <div class="col-md-4">
                         <label>Item Search</label>
+
                         <select id="item_search" class="form-control select2">
                             <option value="">Search Item</option>
                         </select>
+
                     </div>
 
                     <div class="col-md-1">
@@ -128,6 +144,8 @@ include "../includes/header.php";
                     </div>
 
                 </div>
+
+                <div id="scanner-container"></div>
 
                 <div class="mt-3">
 
@@ -230,6 +248,9 @@ include "../includes/header.php";
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
 
+    <!-- BARCODE LIBRARY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
 
     <script>
         $('.select2').select2();
@@ -267,27 +288,17 @@ include "../includes/header.php";
 <tr>
 
 <td>${row}</td>
-
 <td>${barcode}</td>
-
 <td>${item}</td>
-
 <td>${qty}</td>
-
 <td>${rate.toFixed(2)}</td>
-
 <td>${disc}</td>
-
 <td>${gst}</td>
-
 <td class="net">${net.toFixed(2)}</td>
 
 <td><input class="table-input" placeholder="MRP"></td>
-
 <td><input class="table-input" placeholder="SP"></td>
-
 <td><input class="table-input" placeholder="Batch"></td>
-
 <td><input type="date" class="table-input"></td>
 
 <td>
@@ -301,7 +312,6 @@ include "../includes/header.php";
             row++;
 
             calculateTotals();
-
             clearInputs();
 
         });
@@ -325,25 +335,20 @@ include "../includes/header.php";
         function calculateTotals() {
 
             let total_qty = 0;
-
             let total_amt = 0;
 
             $("#grn_table tbody tr").each(function() {
 
                 let qty = parseFloat($(this).find("td:eq(3)").text());
-
                 let net = parseFloat($(this).find(".net").text());
 
                 total_qty += qty;
-
                 total_amt += net;
 
             });
 
             $("#total_qty").val(total_qty.toFixed(2));
-
             $("#gross_amt").val(total_amt.toFixed(2));
-
             $("#net_amt").val(total_amt.toFixed(2));
 
         }
@@ -359,6 +364,58 @@ include "../includes/header.php";
             $("#pur_rate").val("");
             $("#disc").val("0");
             $("#gst").val("0");
+
+        }
+
+
+
+        // ================= BARCODE CAMERA SCANNER =================
+
+        function startScanner() {
+
+            document.getElementById("scanner-container").innerHTML = "";
+
+            Quagga.init({
+
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner-container'),
+                    constraints: {
+                        facingMode: "environment"
+                    }
+                },
+
+                decoder: {
+                    readers: [
+                        "code_128_reader",
+                        "ean_reader",
+                        "ean_8_reader",
+                        "upc_reader"
+                    ]
+                }
+
+            }, function(err) {
+
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+
+                Quagga.start();
+
+            });
+
+
+            Quagga.onDetected(function(data) {
+
+                let barcode = data.codeResult.code;
+
+                $("#barcode").val(barcode);
+
+                Quagga.stop();
+
+            });
 
         }
 
