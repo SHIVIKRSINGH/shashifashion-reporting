@@ -17,7 +17,7 @@ $receipt = [];
 $items = [];
 $role_name       = $_SESSION['role_name'];
 $session_branch  = $_SESSION['branch_id'] ?? '';
-$selected_branch = $_GET['branch'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
+$selected_branch = $_GET['branch_id'] ?? ($_SESSION['selected_branch_id'] ?? $session_branch);
 
 // Branch DB connection
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
