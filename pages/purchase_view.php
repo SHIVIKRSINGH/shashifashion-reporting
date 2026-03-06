@@ -18,9 +18,7 @@ if (!$receipt_id) {
 $role_name      = $_SESSION['role_name'] ?? '';
 $session_branch = $_SESSION['branch_id'] ?? '';
 
-// IMPORTANT FIX
 $selected_branch = $branch_id ?: ($_SESSION['selected_branch_id'] ?? $session_branch);
-
 
 // ==================== Get Branch DB Config ====================
 $stmt = $con->prepare("SELECT * FROM m_branch_sync_config WHERE branch_id = ?");
@@ -52,15 +50,24 @@ $branch_db->query("SET time_zone = '+05:30'");
 
 // ==================== Get GRN Header ====================
 $stmt = $branch_db->prepare("
-    SELECT 
-        H.receipt_id, H.receipt_date, H.branch_id, H.pur_type,
-        H.order_no, H.bill_no, H.bill_date,
-        H.supp_id, S.supp_name,
-        H.gross_amt AS hdr_gross_amt, H.net_amt AS hdr_net_amt,
-        H.status, H.ent_by, H.ent_on
-    FROM t_receipt_hdr H
-    JOIN m_supplier S ON H.supp_id = S.supp_id
-    WHERE H.receipt_id = ?
+SELECT 
+    H.receipt_id,
+    H.receipt_date,
+    H.branch_id,
+    H.pur_type,
+    H.order_no,
+    H.bill_no,
+    H.bill_date,
+    H.supp_id,
+    S.supp_name,
+    H.gross_amt AS hdr_gross_amt,
+    H.net_amt AS hdr_net_amt,
+    H.status,
+    H.ent_by,
+    H.ent_on
+FROM t_receipt_hdr H
+LEFT JOIN m_supplier S ON H.supp_id = S.supp_id
+WHERE H.receipt_id = ?
 ");
 
 $stmt->bind_param("s", $receipt_id);
@@ -70,59 +77,68 @@ $receipt = $result->fetch_assoc();
 $stmt->close();
 
 
-// ==================== Get GRN Items ====================
+// ==================== Get GRN Items (Optimized) ====================
 $stmt = $branch_db->prepare("
-    SELECT 
-        B.sl_no, B.bar_code, B.item_id, C.hsn_code,
-        C.item_desc AS item_name,
-        B.qty, B.free_item_yn, B.pur_rate, B.item_amt,
-        B.disc_per, B.disc_amt, B.vat_per, B.vat_amt,
-        B.net_rate, B.net_amt AS d_net_amt,
-        B.mrp, B.sales_price, B.cess_perc, B.cess_amt,
+SELECT 
+    MIN(B.sl_no) AS sl_no,
+    B.item_id,
+    COALESCE(C.item_desc,'Item Missing') AS item_name,
+    C.hsn_code,
 
-        CASE WHEN B.net_rate > 0 
-            THEN ROUND(((B.mrp - B.net_rate) * 100) / B.net_rate, 2) 
-            ELSE 0 END AS margin,
+    SUM(B.qty) AS qty,
+    SUM(B.item_amt) AS item_amt,
+    SUM(B.disc_amt) AS disc_amt,
+    SUM(B.vat_amt) AS vat_amt,
+    SUM(B.net_amt) AS d_net_amt,
+    SUM(B.cess_amt) AS cess_amt,
 
-        CASE WHEN B.net_rate > 0 
-            THEN ROUND(((B.sales_price - B.net_rate) * 100) / B.net_rate, 2) 
-            ELSE 0 END AS margin_on_sp,
+    B.pur_rate,
+    B.disc_per,
+    B.vat_per,
+    B.net_rate,
+    B.mrp,
+    B.sales_price,
+    B.cess_perc,
 
-        CASE WHEN B.mrp > 0 
-            THEN ROUND(((B.mrp - B.net_rate) * 100) / B.mrp, 2) 
-            ELSE 0 END AS mark_down_margin
+    CASE 
+        WHEN B.net_rate > 0 
+        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.net_rate,2)
+        ELSE 0 
+    END AS margin,
 
-    FROM t_receipt_det B
-    JOIN m_item_hdr C ON TRIM(B.item_id) = TRIM(C.item_id)
-    WHERE TRIM(B.receipt_id) = ?
-    ORDER BY CAST(B.sl_no AS SIGNED)
+    CASE 
+        WHEN B.net_rate > 0 
+        THEN ROUND(((B.sales_price - B.net_rate) * 100) / B.net_rate,2)
+        ELSE 0 
+    END AS margin_on_sp,
+
+    CASE 
+        WHEN B.mrp > 0 
+        THEN ROUND(((B.mrp - B.net_rate) * 100) / B.mrp,2)
+        ELSE 0 
+    END AS mark_down_margin
+
+FROM t_receipt_det B
+
+LEFT JOIN m_item_hdr C 
+ON B.item_id = C.item_id
+
+WHERE B.receipt_id = ?
+
+GROUP BY B.item_id
+
+ORDER BY sl_no
 ");
 
 $stmt->bind_param("s", $receipt_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
-$grouped_items = [];
+$items = [];
 
 while ($row = $result->fetch_assoc()) {
-
-    $item_id = $row['item_id'];
-
-    if (!isset($grouped_items[$item_id])) {
-
-        $grouped_items[$item_id] = $row;
-    } else {
-
-        $grouped_items[$item_id]['qty'] += $row['qty'];
-        $grouped_items[$item_id]['item_amt'] += $row['item_amt'];
-        $grouped_items[$item_id]['disc_amt'] += $row['disc_amt'];
-        $grouped_items[$item_id]['vat_amt'] += $row['vat_amt'];
-        $grouped_items[$item_id]['d_net_amt'] += $row['d_net_amt'];
-        $grouped_items[$item_id]['cess_amt'] += $row['cess_amt'];
-    }
+    $items[] = $row;
 }
-
-$items = array_values($grouped_items);
 
 $stmt->close();
 ?>
@@ -175,9 +191,7 @@ $stmt->close();
             <div class="action-buttons no-print">
 
                 <button class="btn btn-primary btn-sm" onclick="printFull()">🖨️ Print</button>
-
                 <button class="btn btn-danger btn-sm" onclick="downloadPDF()">📄 PDF</button>
-
                 <button class="btn btn-success btn-sm" onclick="exportToExcel()">📊 Excel</button>
 
             </div>
@@ -203,9 +217,7 @@ $stmt->close();
                             <p>
 
                                 <strong>🧾 Supplier:</strong> <?= htmlspecialchars($receipt['supp_name']) ?><br>
-
                                 <strong>📅 Receipt Date:</strong> <?= $receipt['receipt_date'] ?><br>
-
                                 <strong>📄 Bill No:</strong> <?= $receipt['bill_no'] ?> (<?= $receipt['bill_date'] ?>)
 
                             </p>
@@ -217,9 +229,7 @@ $stmt->close();
                             <p>
 
                                 <strong>👤 Entered By:</strong> <?= $receipt['ent_by'] ?><br>
-
                                 <strong>💰 Gross Amount:</strong> ₹<?= number_format($receipt['hdr_gross_amt'], 2) ?><br>
-
                                 <strong>💵 Net Amount:</strong> ₹<?= number_format($receipt['hdr_net_amt'], 2) ?>
 
                             </p>
@@ -268,33 +278,19 @@ $stmt->close();
                             <tr class="text-center">
 
                                 <td><?= $i++ ?></td>
-
                                 <td class="text-start"><?= htmlspecialchars($row['item_name']) ?></td>
-
                                 <td><?= $row['hsn_code'] ?></td>
-
                                 <td><?= $row['qty'] ?></td>
-
                                 <td><?= $row['pur_rate'] ?></td>
-
                                 <td><?= $row['disc_per'] ?></td>
-
                                 <td><?= $row['vat_per'] ?></td>
-
                                 <td><?= $row['net_rate'] ?></td>
-
                                 <td><?= number_format($row['d_net_amt'], 2) ?></td>
-
                                 <td><?= $row['mrp'] ?></td>
-
                                 <td><?= $row['sales_price'] ?></td>
-
                                 <td><?= $row['cess_perc'] ?></td>
-
                                 <td><?= $row['margin'] ?>%</td>
-
                                 <td><?= $row['margin_on_sp'] ?>%</td>
-
                                 <td><?= $row['mark_down_margin'] ?>%</td>
 
                             </tr>
