@@ -101,7 +101,6 @@ include "../includes/header.php";
 
                     </div>
 
-
                     <div class="col-md-4">
                         <label>Item Search</label>
                         <select id="item_search" class="form-control"></select>
@@ -130,6 +129,7 @@ include "../includes/header.php";
                 </div>
 
                 <div id="scanner-container">
+
                     <div id="camera"></div>
 
                     <button class="btn btn-success btn-sm mt-2" onclick="captureBarcode()">
@@ -224,18 +224,14 @@ include "../includes/header.php";
         let row = 1;
         let detected = null;
 
-
-        /* DATE */
-
         $("#receipt_date").val(new Date().toISOString().split("T")[0]);
         $("#bill_date").val(new Date().toISOString().split("T")[0]);
-
-
 
         /* SUPPLIER SEARCH */
 
         $("#supplier").select2({
-
+            placeholder: "Search Supplier",
+            minimumInputLength: 1,
             ajax: {
                 url: "ajax/search_supplier.php",
                 dataType: "json",
@@ -252,14 +248,14 @@ include "../includes/header.php";
                     };
                 }
             }
-
         });
 
 
         /* ITEM SEARCH */
 
         $("#item_search").select2({
-
+            placeholder: "Search Item",
+            minimumInputLength: 1,
             ajax: {
                 url: "ajax/search_item.php",
                 dataType: "json",
@@ -276,25 +272,21 @@ include "../includes/header.php";
                     };
                 }
             }
-
         });
-
 
 
         /* BARCODE LOOKUP */
 
-        $("#barcode").change(function() {
+        $("#barcode").on("change", function() {
 
             let barcode = $(this).val();
 
             $.getJSON("ajax/get_item_barcode.php", {
-
                 barcode: barcode,
                 branch_id: $("#branch").val()
-
             }, function(data) {
 
-                if (!data.item_id) {
+                if (!data || !data.item_id) {
                     alert("Item not found");
                     return;
                 }
@@ -311,13 +303,12 @@ include "../includes/header.php";
         });
 
 
-
         /* ADD ITEM */
 
         $("#add_item").click(function() {
 
             let barcode = $("#barcode").val();
-            let item = $("#item_search option:selected").text();
+            let item = $("#item_search option:selected").text() || "";
             let qty = parseFloat($("#qty").val());
             let rate = parseFloat($("#pur_rate").val());
             let disc = parseFloat($("#disc").val());
@@ -333,37 +324,8 @@ include "../includes/header.php";
             let gst_amt = (gross - disc_amt) * gst / 100;
             let net = gross - disc_amt + gst_amt;
 
-
-            /* DUPLICATE MERGE */
-
-            let found = false;
-
-            $("#grn_table tbody tr").each(function() {
-
-                if ($(this).find("td:eq(1)").text() == barcode) {
-
-                    let q = parseFloat($(this).find("td:eq(3)").text());
-                    q += qty;
-
-                    $(this).find("td:eq(3)").text(q);
-
-                    found = true;
-
-                }
-
-            });
-
-            if (found) {
-                calculateTotals();
-                return;
-            }
-
-
-
             $("#grn_table tbody").append(`
-
 <tr>
-
 <td>${row}</td>
 <td>${barcode}</td>
 <td>${item}</td>
@@ -372,18 +334,12 @@ include "../includes/header.php";
 <td>${disc}</td>
 <td>${gst}</td>
 <td class="net">${net.toFixed(2)}</td>
-
 <td><input class="table-input"></td>
 <td><input class="table-input"></td>
 <td><input class="table-input"></td>
 <td><input type="date" class="table-input"></td>
-
-<td>
-<button class="btn btn-danger btn-sm remove">X</button>
-</td>
-
+<td><button class="btn btn-danger btn-sm remove">X</button></td>
 </tr>
-
 `);
 
             row++;
@@ -393,19 +349,13 @@ include "../includes/header.php";
         });
 
 
-
         /* REMOVE */
 
         $(document).on("click", ".remove", function() {
-
             $(this).closest("tr").remove();
             calculateTotals();
-
         });
 
-
-
-        /* TOTALS */
 
         function calculateTotals() {
 
@@ -413,10 +363,8 @@ include "../includes/header.php";
             let amt = 0;
 
             $("#grn_table tbody tr").each(function() {
-
                 qty += parseFloat($(this).find("td:eq(3)").text());
                 amt += parseFloat($(this).find(".net").text());
-
             });
 
             $("#total_qty").val(qty.toFixed(2));
@@ -426,7 +374,6 @@ include "../includes/header.php";
         }
 
 
-
         /* CAMERA */
 
         function openCamera() {
@@ -434,7 +381,6 @@ include "../includes/header.php";
             $("#scanner-container").show();
 
             Quagga.init({
-
                 inputStream: {
                     type: "LiveStream",
                     target: document.querySelector('#camera'),
@@ -442,15 +388,12 @@ include "../includes/header.php";
                         facingMode: "environment"
                     }
                 },
-
                 decoder: {
                     readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
                 }
-
             }, function(err) {
 
                 if (err) return console.log(err);
-
                 Quagga.start();
 
             });
@@ -461,8 +404,6 @@ include "../includes/header.php";
 
         }
 
-
-
         function captureBarcode() {
 
             if (!detected) {
@@ -471,12 +412,9 @@ include "../includes/header.php";
             }
 
             $("#barcode").val(detected).trigger("change");
-
             stopCamera();
 
         }
-
-
 
         function stopCamera() {
 
