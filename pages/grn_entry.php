@@ -74,7 +74,6 @@ include "../includes/header.php";
                     </div>
 
                 </div>
-
             </div>
         </div>
 
@@ -190,50 +189,45 @@ include "../includes/header.php";
 
     <!-- JS -->
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Ensure jQuery exists (fallback if header.php didn't load it) -->
+    <script>
+        if (typeof jQuery == 'undefined') {
+            document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
+
     <script>
-        $(document).ready(function() {
+        $(function() {
 
             $("#receipt_date").val(new Date().toISOString().split("T")[0]);
             $("#bill_date").val(new Date().toISOString().split("T")[0]);
-
 
             /* SUPPLIER SEARCH */
 
             $('#supplier').select2({
 
                 placeholder: "Search Supplier",
+                width: "100%",
 
                 ajax: {
-
                     url: "ajax/search_supplier.php",
-
                     dataType: "json",
-
                     delay: 250,
-
                     data: function(params) {
-
                         return {
-
                             term: params.term,
                             branch_id: $("#branch").val()
-
                         };
-
                     },
-
                     processResults: function(data) {
-
                         return {
                             results: data
                         };
-
                     }
-
                 }
 
             });
@@ -244,61 +238,42 @@ include "../includes/header.php";
             $('#item_search').select2({
 
                 placeholder: "Search Item",
+                width: "100%",
 
                 ajax: {
-
                     url: "ajax/search_item.php",
-
                     dataType: "json",
-
                     delay: 250,
-
                     data: function(params) {
-
                         return {
-
                             term: params.term,
                             branch_id: $("#branch").val()
-
                         };
-
                     },
-
                     processResults: function(data) {
-
                         return {
-
                             results: data
-
                         };
-
                     }
-
                 }
 
             });
 
 
-
             /* BARCODE LOOKUP */
 
-            $("#barcode").change(function() {
+            $("#barcode").on("change", function() {
 
                 let barcode = $(this).val();
 
                 $.getJSON("ajax/get_item_barcode.php", {
-
                     barcode: barcode,
                     branch_id: $("#branch").val()
-
                 }, function(data) {
 
                     if (!data) {
-
                         alert("Item not found");
-
                         return;
-
                     }
 
                     $("#item_search").append(
@@ -316,7 +291,6 @@ include "../includes/header.php";
             });
 
 
-
             /* ADD ITEM */
 
             let row = 1;
@@ -331,10 +305,13 @@ include "../includes/header.php";
                 let sp = $("#sp").val();
                 let gst = $("#gst").val();
 
+                if (!item) {
+                    alert("Please select item");
+                    return;
+                }
+
                 $("#grn_table tbody").append(`
-
 <tr>
-
 <td>${row}</td>
 <td>${barcode}</td>
 <td>${item}</td>
@@ -343,13 +320,8 @@ include "../includes/header.php";
 <td>${mrp}</td>
 <td>${sp}</td>
 <td>${gst}</td>
-
-<td>
-<button class="btn btn-danger btn-sm remove">X</button>
-</td>
-
+<td><button class="btn btn-danger btn-sm remove">X</button></td>
 </tr>
-
 `);
 
                 row++;
@@ -358,13 +330,10 @@ include "../includes/header.php";
 
 
             $(document).on("click", ".remove", function() {
-
                 $(this).closest("tr").remove();
-
             });
 
         });
-
 
 
         /* CAMERA */
@@ -391,37 +360,32 @@ include "../includes/header.php";
 
             }, function(err) {
 
-                if (err) return console.log(err);
+                if (err) {
+                    console.log(err);
+                    return;
+                }
 
                 Quagga.start();
 
             });
 
             Quagga.onDetected(function(data) {
-
                 detected = data.codeResult.code;
-
             });
 
         }
 
-
         function captureBarcode() {
 
             if (!detected) {
-
                 alert("No barcode detected");
-
                 return;
-
             }
 
             $("#barcode").val(detected).trigger("change");
-
             stopCamera();
 
         }
-
 
         function stopCamera() {
 
