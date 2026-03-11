@@ -39,7 +39,6 @@ include "../includes/header.php";
 
         <h4 class="mb-3">📦 GRN Entry</h4>
 
-
         <!-- HEADER -->
 
         <div class="card mb-3">
@@ -92,7 +91,6 @@ include "../includes/header.php";
                     <div class="col-md-3">
 
                         <label>Barcode</label>
-
                         <input type="text" id="barcode" class="form-control">
 
                         <button class="btn btn-primary btn-sm mt-2" onclick="openCamera()">
@@ -216,115 +214,124 @@ include "../includes/header.php";
 
 
 
+    <!-- JS LIBRARIES -->
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
+
     <script>
-        let row = 1;
-        let detected = null;
+        $(document).ready(function() {
 
-        $("#receipt_date").val(new Date().toISOString().split("T")[0]);
-        $("#bill_date").val(new Date().toISOString().split("T")[0]);
+            let row = 1;
+            let detected = null;
 
-        /* SUPPLIER SEARCH */
+            /* AUTO DATE */
 
-        $("#supplier").select2({
-            placeholder: "Search Supplier",
-            minimumInputLength: 1,
-            ajax: {
-                url: "ajax/search_supplier.php",
-                dataType: "json",
-                delay: 250,
-                data: function(params) {
-                    return {
-                        term: params.term,
-                        branch_id: $("#branch").val()
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data
-                    };
+            $("#receipt_date").val(new Date().toISOString().split("T")[0]);
+            $("#bill_date").val(new Date().toISOString().split("T")[0]);
+
+
+
+            /* SUPPLIER SEARCH */
+
+            $('#supplier').select2({
+                placeholder: "Search Supplier",
+                minimumInputLength: 1,
+                ajax: {
+                    url: "ajax/search_supplier.php",
+                    dataType: "json",
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            term: params.term,
+                            branch_id: $("#branch").val()
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    }
                 }
-            }
-        });
+            });
 
 
-        /* ITEM SEARCH */
+            /* ITEM SEARCH */
 
-        $("#item_search").select2({
-            placeholder: "Search Item",
-            minimumInputLength: 1,
-            ajax: {
-                url: "ajax/search_item.php",
-                dataType: "json",
-                delay: 250,
-                data: function(params) {
-                    return {
-                        term: params.term,
-                        branch_id: $("#branch").val()
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data
-                    };
+            $('#item_search').select2({
+                placeholder: "Search Item",
+                minimumInputLength: 1,
+                ajax: {
+                    url: "ajax/search_item.php",
+                    dataType: "json",
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            term: params.term,
+                            branch_id: $("#branch").val()
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    }
                 }
-            }
-        });
+            });
 
 
-        /* BARCODE LOOKUP */
+            /* BARCODE LOOKUP */
 
-        $("#barcode").on("change", function() {
+            $("#barcode").on("change", function() {
 
-            let barcode = $(this).val();
+                let barcode = $(this).val();
 
-            $.getJSON("ajax/get_item_barcode.php", {
-                barcode: barcode,
-                branch_id: $("#branch").val()
-            }, function(data) {
+                $.getJSON("ajax/get_item_barcode.php", {
+                    barcode: barcode,
+                    branch_id: $("#branch").val()
+                }, function(data) {
 
-                if (!data || !data.item_id) {
-                    alert("Item not found");
-                    return;
-                }
+                    if (!data || !data.item_id) {
+                        alert("Item not found");
+                        return;
+                    }
 
-                $("#item_search").append(
-                    new Option(data.item_name, data.item_id, true, true)
-                ).trigger("change");
+                    $("#item_search").append(
+                        new Option(data.item_name, data.item_id, true, true)
+                    ).trigger("change");
 
-                $("#pur_rate").val(data.cp);
-                $("#gst").val(data.gst);
+                    $("#pur_rate").val(data.cp);
+                    $("#gst").val(data.gst);
+
+                });
 
             });
 
-        });
 
+            /* ADD ITEM */
 
-        /* ADD ITEM */
+            $("#add_item").click(function() {
 
-        $("#add_item").click(function() {
+                let barcode = $("#barcode").val();
+                let item = $("#item_search option:selected").text() || "";
+                let qty = parseFloat($("#qty").val());
+                let rate = parseFloat($("#pur_rate").val());
+                let disc = parseFloat($("#disc").val());
+                let gst = parseFloat($("#gst").val());
 
-            let barcode = $("#barcode").val();
-            let item = $("#item_search option:selected").text() || "";
-            let qty = parseFloat($("#qty").val());
-            let rate = parseFloat($("#pur_rate").val());
-            let disc = parseFloat($("#disc").val());
-            let gst = parseFloat($("#gst").val());
+                if (!item || !qty || !rate) {
+                    alert("Enter item, qty and rate");
+                    return;
+                }
 
-            if (!item || !qty || !rate) {
-                alert("Enter item, qty and rate");
-                return;
-            }
+                let gross = qty * rate;
+                let disc_amt = gross * disc / 100;
+                let gst_amt = (gross - disc_amt) * gst / 100;
+                let net = gross - disc_amt + gst_amt;
 
-            let gross = qty * rate;
-            let disc_amt = gross * disc / 100;
-            let gst_amt = (gross - disc_amt) * gst / 100;
-            let net = gross - disc_amt + gst_amt;
-
-            $("#grn_table tbody").append(`
+                $("#grn_table tbody").append(`
 <tr>
 <td>${row}</td>
 <td>${barcode}</td>
@@ -342,45 +349,48 @@ include "../includes/header.php";
 </tr>
 `);
 
-            row++;
+                row++;
 
-            calculateTotals();
+                calculateTotals();
 
-        });
-
-
-        /* REMOVE */
-
-        $(document).on("click", ".remove", function() {
-            $(this).closest("tr").remove();
-            calculateTotals();
-        });
-
-
-        function calculateTotals() {
-
-            let qty = 0;
-            let amt = 0;
-
-            $("#grn_table tbody tr").each(function() {
-                qty += parseFloat($(this).find("td:eq(3)").text());
-                amt += parseFloat($(this).find(".net").text());
             });
 
-            $("#total_qty").val(qty.toFixed(2));
-            $("#gross_amt").val(amt.toFixed(2));
-            $("#net_amt").val(amt.toFixed(2));
 
-        }
+            /* REMOVE */
+
+            $(document).on("click", ".remove", function() {
+                $(this).closest("tr").remove();
+                calculateTotals();
+            });
 
 
-        /* CAMERA */
+            function calculateTotals() {
+
+                let qty = 0;
+                let amt = 0;
+
+                $("#grn_table tbody tr").each(function() {
+                    qty += parseFloat($(this).find("td:eq(3)").text());
+                    amt += parseFloat($(this).find(".net").text());
+                });
+
+                $("#total_qty").val(qty.toFixed(2));
+                $("#gross_amt").val(amt.toFixed(2));
+                $("#net_amt").val(amt.toFixed(2));
+
+            }
+
+        });
+
+
+        /* CAMERA FUNCTIONS */
 
         function openCamera() {
 
             $("#scanner-container").show();
 
             Quagga.init({
+
                 inputStream: {
                     type: "LiveStream",
                     target: document.querySelector('#camera'),
@@ -388,12 +398,15 @@ include "../includes/header.php";
                         facingMode: "environment"
                     }
                 },
+
                 decoder: {
                     readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
                 }
+
             }, function(err) {
 
                 if (err) return console.log(err);
+
                 Quagga.start();
 
             });
