@@ -7,9 +7,7 @@ include "../includes/header.php";
 <html>
 
 <head>
-
     <title>GRN Entry</title>
-
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet">
 
     <style>
@@ -23,28 +21,31 @@ include "../includes/header.php";
             max-width: 420px;
             margin-top: 10px;
             display: none;
+            border: 2px solid #007bff;
+            padding: 10px;
+            background: #fff;
         }
 
         #scanner-container video {
             width: 100%;
         }
-    </style>
 
+        /* Ensure Select2 fits Bootstrap styling */
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+            border: 1px solid #ced4da !important;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
 
     <div class="container-fluid mt-4">
-
         <h4 class="mb-3">📦 GRN Entry</h4>
-
-        <!-- HEADER -->
 
         <div class="card mb-3">
             <div class="card-body">
-
                 <div class="row">
-
                     <div class="col-md-2">
                         <label>Branch</label>
                         <select class="form-control" id="branch">
@@ -60,7 +61,7 @@ include "../includes/header.php";
 
                     <div class="col-md-3">
                         <label>Supplier</label>
-                        <select id="supplier" style="width:100%"></select>
+                        <select id="supplier" class="form-control" style="width:100%"></select>
                     </div>
 
                     <div class="col-md-3">
@@ -72,35 +73,24 @@ include "../includes/header.php";
                         <label>Bill Date</label>
                         <input type="date" id="bill_date" class="form-control">
                     </div>
-
                 </div>
             </div>
         </div>
 
-
-        <!-- ITEM ENTRY -->
-
         <div class="card mb-3">
             <div class="card-body">
-
                 <div class="row">
-
                     <div class="col-md-3">
-
                         <label>Barcode</label>
-
                         <input type="text" id="barcode" class="form-control">
-
-                        <button class="btn btn-primary btn-sm mt-2" onclick="openCamera()">
+                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="openCamera()">
                             📷 Scan Barcode
                         </button>
-
                     </div>
-
 
                     <div class="col-md-4">
                         <label>Item Search</label>
-                        <select id="item_search" style="width:100%"></select>
+                        <select id="item_search" class="form-control" style="width:100%"></select>
                     </div>
 
                     <div class="col-md-1">
@@ -127,41 +117,25 @@ include "../includes/header.php";
                         <label>GST%</label>
                         <input type="number" id="gst" class="form-control">
                     </div>
-
                 </div>
 
-
                 <div id="scanner-container">
-
                     <div id="camera"></div>
-
-                    <button class="btn btn-success btn-sm mt-2" onclick="captureBarcode()">
-                        Capture Barcode
-                    </button>
-
-                    <button class="btn btn-danger btn-sm mt-2" onclick="stopCamera()">
-                        Close
-                    </button>
-
+                    <div class="mt-2 text-center">
+                        <button class="btn btn-success btn-sm" onclick="captureBarcode()">Capture</button>
+                        <button class="btn btn-danger btn-sm" onclick="stopCamera()">Close</button>
+                    </div>
                 </div>
 
                 <button class="btn btn-primary mt-3" id="add_item">Add Item</button>
-
             </div>
         </div>
 
-
-        <!-- TABLE -->
-
         <div class="card">
             <div class="card-body">
-
                 <table class="table table-bordered" id="grn_table">
-
                     <thead class="table-dark text-center">
-
                         <tr>
-
                             <th>Sl</th>
                             <th>Barcode</th>
                             <th>Item</th>
@@ -171,48 +145,27 @@ include "../includes/header.php";
                             <th>SP</th>
                             <th>GST</th>
                             <th>Remove</th>
-
                         </tr>
-
                     </thead>
-
                     <tbody></tbody>
-
                 </table>
-
             </div>
         </div>
-
     </div>
 
-
-
-    <!-- JS -->
-
-    <!-- Ensure jQuery exists (fallback if header.php didn't load it) -->
-    <script>
-        if (typeof jQuery == 'undefined') {
-            document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
-        }
-    </script>
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
-
     <script>
-        $(function() {
-
-            $("#receipt_date").val(new Date().toISOString().split("T")[0]);
-            $("#bill_date").val(new Date().toISOString().split("T")[0]);
+        $(document).ready(function() {
+            // Set default dates
+            $("#receipt_date, #bill_date").val(new Date().toISOString().split("T")[0]);
 
             /* SUPPLIER SEARCH */
-
             $('#supplier').select2({
-
                 placeholder: "Search Supplier",
-                width: "100%",
-
+                allowClear: true,
                 ajax: {
                     url: "ajax/search_supplier.php",
                     dataType: "json",
@@ -229,17 +182,12 @@ include "../includes/header.php";
                         };
                     }
                 }
-
             });
 
-
             /* ITEM SEARCH */
-
             $('#item_search').select2({
-
                 placeholder: "Search Item",
-                width: "100%",
-
+                allowClear: true,
                 ajax: {
                     url: "ajax/search_item.php",
                     dataType: "json",
@@ -256,145 +204,123 @@ include "../includes/header.php";
                         };
                     }
                 }
-
             });
 
-
             /* BARCODE LOOKUP */
-
-            $("#barcode").on("change", function() {
-
+            $("#barcode").on('change', function() {
                 let barcode = $(this).val();
+                if (!barcode) return;
 
                 $.getJSON("ajax/get_item_barcode.php", {
                     barcode: barcode,
                     branch_id: $("#branch").val()
                 }, function(data) {
+                    if (data && data.item_id) {
+                        let newOption = new Option(data.item_name, data.item_id, true, true);
+                        $("#item_search").append(newOption).trigger("change");
 
-                    if (!data) {
+                        $("#pur_rate").val(data.cp);
+                        $("#mrp").val(data.mrp);
+                        $("#sp").val(data.sp);
+                        $("#gst").val(data.gst);
+                    } else {
                         alert("Item not found");
-                        return;
                     }
-
-                    $("#item_search").append(
-                        new Option(data.item_name, data.item_id, true, true)
-                    ).trigger("change");
-
-                    $("#qty").val(1);
-                    $("#pur_rate").val(data.cp);
-                    $("#mrp").val(data.mrp);
-                    $("#sp").val(data.sp);
-                    $("#gst").val(data.gst);
-
                 });
-
             });
 
-
-            /* ADD ITEM */
-
-            let row = 1;
-
+            /* ADD ITEM TO TABLE */
+            let slCount = 1;
             $("#add_item").click(function() {
-
-                let barcode = $("#barcode").val();
-                let item = $("#item_search option:selected").text();
+                let barcode = $("#barcode").val() || "-";
+                let itemText = $("#item_search option:selected").text();
+                let itemId = $("#item_search").val();
                 let qty = $("#qty").val();
                 let cp = $("#pur_rate").val();
                 let mrp = $("#mrp").val();
                 let sp = $("#sp").val();
                 let gst = $("#gst").val();
 
-                if (!item) {
-                    alert("Please select item");
+                if (!itemId || !qty) {
+                    alert("Please select an item and enter quantity");
                     return;
                 }
 
-                $("#grn_table tbody").append(`
-<tr>
-<td>${row}</td>
-<td>${barcode}</td>
-<td>${item}</td>
-<td>${qty}</td>
-<td>${cp}</td>
-<td>${mrp}</td>
-<td>${sp}</td>
-<td>${gst}</td>
-<td><button class="btn btn-danger btn-sm remove">X</button></td>
-</tr>
-`);
+                let newRow = `
+                    <tr>
+                        <td class="text-center">${slCount}</td>
+                        <td>${barcode}</td>
+                        <td>${itemText}</td>
+                        <td class="text-center">${qty}</td>
+                        <td class="text-end">${cp}</td>
+                        <td class="text-end">${mrp}</td>
+                        <td class="text-end">${sp}</td>
+                        <td class="text-center">${gst}%</td>
+                        <td class="text-center">
+                            <button class="btn btn-danger btn-sm remove">X</button>
+                        </td>
+                    </tr>`;
 
-                row++;
+                $("#grn_table tbody").append(newRow);
+                slCount++;
 
+                // Clear fields for next entry
+                $("#barcode, #pur_rate, #mrp, #sp, #gst").val("");
+                $("#item_search").val(null).trigger("change");
+                $("#qty").val(1);
             });
-
 
             $(document).on("click", ".remove", function() {
                 $(this).closest("tr").remove();
             });
-
         });
 
-
-        /* CAMERA */
-
-        let detected = null;
+        /* CAMERA FUNCTIONS */
+        let detectedCode = null;
 
         function openCamera() {
-
             $("#scanner-container").show();
-
             Quagga.init({
-
                 inputStream: {
+                    name: "Live",
                     type: "LiveStream",
                     target: document.querySelector('#camera'),
                     constraints: {
                         facingMode: "environment"
                     }
                 },
-
                 decoder: {
                     readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
                 }
-
             }, function(err) {
-
                 if (err) {
-                    console.log(err);
+                    console.error(err);
                     return;
                 }
-
                 Quagga.start();
-
             });
 
             Quagga.onDetected(function(data) {
-                detected = data.codeResult.code;
+                detectedCode = data.codeResult.code;
+                // Optional: visual feedback that a code was detected
             });
-
         }
 
         function captureBarcode() {
-
-            if (!detected) {
-                alert("No barcode detected");
+            if (!detectedCode) {
+                alert("No barcode detected yet. Please hold the barcode steady.");
                 return;
             }
-
-            $("#barcode").val(detected).trigger("change");
+            $("#barcode").val(detectedCode).trigger("change");
             stopCamera();
-
         }
 
         function stopCamera() {
-
             Quagga.stop();
             $("#scanner-container").hide();
-
+            detectedCode = null;
         }
     </script>
-
 </body>
 
 </html>
