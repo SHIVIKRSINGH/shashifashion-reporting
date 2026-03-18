@@ -151,26 +151,12 @@ include "../includes/header.php";
     </div>
 </div>
 
-<!-- Load jQuery FIRST (only if not already loaded by header.php) -->
-<script>
-    if (typeof jQuery === 'undefined') {
-        var jqScript = document.createElement('script');
-        jqScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
-        jqScript.type = 'text/javascript';
-        document.head.appendChild(jqScript);
-        jqScript.onload = initPage;
-    } else {
-        // jQuery already loaded by header.php — init directly
-        initPage();
-    }
-</script>
-
-<!-- Load Select2 and Quagga AFTER jQuery is confirmed -->
+<!-- Load Select2 and Quagga (jQuery already available from header.php or loaded below) -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 
 <script>
-    // ─── Main Init ────────────────────────────────────────────────────────────
+    // ─── Main Init — defined FIRST so the jQuery check below can call it ──────
     function initPage() {
         $(document).ready(function() {
 
@@ -361,6 +347,17 @@ include "../includes/header.php";
 
         }); // end document.ready
     } // end initPage
+
+    // ─── jQuery Check — runs AFTER initPage is defined above ─────────────────
+    if (typeof jQuery === 'undefined') {
+        var jqScript = document.createElement('script');
+        jqScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+        jqScript.type = 'text/javascript';
+        document.head.appendChild(jqScript);
+        jqScript.onload = initPage; // call once jQuery finishes loading
+    } else {
+        initPage(); // jQuery already loaded by header.php
+    }
 </script>
 
 <!-- Camera / Quagga Functions -->
