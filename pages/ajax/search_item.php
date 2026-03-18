@@ -47,16 +47,16 @@ SELECT
     H.item_id,
     H.item_desc,
     H.sale_tax_paid,
-    D.cost_price,
-    D.mrp,
-    D.sale_price
+    MIN(D.cost_price) AS cost_price,
+    MIN(D.mrp)        AS mrp,
+    MIN(D.sale_price) AS sale_price
 FROM m_item_hdr H
 LEFT JOIN m_item_det D
-    ON D.item_id = H.item_id
+    ON D.item_id    = H.item_id
     AND D.branch_id = H.branch_id
 WHERE H.item_desc LIKE ?
-  AND H.branch_id = ?
-GROUP BY H.item_id
+  AND H.branch_id  = ?
+GROUP BY H.item_id, H.item_desc, H.sale_tax_paid
 LIMIT 20
 ";
 
