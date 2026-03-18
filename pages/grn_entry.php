@@ -151,12 +151,37 @@ include "../includes/header.php";
     </div>
 </div>
 
-<!-- Load Select2 and Quagga (jQuery already available from header.php or loaded below) -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<!-- All scripts loaded dynamically to guarantee correct order -->
+<script>
+    // Dynamically load a script, then call a callback
+    function loadScript(src, callback) {
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = callback;
+        s.onerror = function() {
+            console.error('Failed to load: ' + src);
+        };
+        document.head.appendChild(s);
+    }
+
+    // Load chain: jQuery → Select2 + Quagga → initPage
+    function loadDependencies() {
+        loadScript('https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js', function() {
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js', function() {
+                initPage();
+            });
+        });
+    }
+
+    if (typeof jQuery === 'undefined') {
+        loadScript('https://code.jquery.com/jquery-3.6.0.min.js', loadDependencies);
+    } else {
+        loadDependencies();
+    }
+</script>
 
 <script>
-    // ─── Main Init — defined FIRST so the jQuery check below can call it ──────
+    // ─── Main Init ───────────────────────────────────────────────────────────
     function initPage() {
         $(document).ready(function() {
 
@@ -347,17 +372,6 @@ include "../includes/header.php";
 
         }); // end document.ready
     } // end initPage
-
-    // ─── jQuery Check — runs AFTER initPage is defined above ─────────────────
-    if (typeof jQuery === 'undefined') {
-        var jqScript = document.createElement('script');
-        jqScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
-        jqScript.type = 'text/javascript';
-        document.head.appendChild(jqScript);
-        jqScript.onload = initPage; // call once jQuery finishes loading
-    } else {
-        initPage(); // jQuery already loaded by header.php
-    }
 </script>
 
 <!-- Camera / Quagga Functions -->
